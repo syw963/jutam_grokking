@@ -555,6 +555,14 @@ PRESETS: dict[str, str] = {
     "w2_m12_n3": "REF:map(op=add3,seed=12)",
     "w2_m15_n3": "REF:map(op=add3,seed=15)",
     "w1_m0_n3": "REF:map(op=add3,seed=0)",
+    # E9 합성 파일럿: 단일 부품과 그 합성
+    "p_sort": "A:asc",
+    "p_next": "REF:next(op=add)",
+    "p_first": "Q:first > R:add",
+    "comp_sort_next": "A:asc > REF:next(op=add)",          # 정렬 → 이웃 덧셈 (l1_sortnext와 같은 함수)
+    "comp_next_next": "REF:next(op=add) > REF:next(op=add)",  # x_i + 2x_{i+1} + x_{i+2}
+    "comp_first_sort": "Q:first > R:add > A:asc",          # 첫 값 더하기 → 정렬 (RJ shift_mod 꼴)
+    "comp_next_sort": "REF:next(op=add) > A:asc",          # 이웃 덧셈 → 정렬
     # RQ2 본 실험 사슬
     "c_sum_sort_nb": "S:sum > A:asc > AF:sum",
     "c_sort_nb_sort": "A:asc > AF:sum > A:asc",
