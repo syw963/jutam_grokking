@@ -91,6 +91,8 @@ def parse_args(argv=None):
                     help="한 번에 계산할 (run 수 × 행 수) 상한. 넘으면 나눠 계산하고 gradient를 모은다 (결과 같음)")
     ap.add_argument("--sym-probe", type=int, default=512)
     ap.add_argument("--sym-sigmas", type=int, default=8)
+    ap.add_argument("--sym-every", type=int, default=1000,
+                    help="대칭 위반 점수를 재는 간격(step). 그 사이 평가에서는 빈 값. 0이면 재지 않음")
     ap.add_argument("--fit-thr", type=float, default=0.99)
     ap.add_argument("--gen-thr", type=float, default=0.95)
     ap.add_argument("--sym-thr", type=float, default=0.05)
@@ -111,7 +113,7 @@ def main(argv=None):
     resume = None
     if args.resume:
         resume = torch.load(args.resume, map_location="cpu", weights_only=False)
-        keep = {"steps", "resume", "device", "quiet", "rows_budget", "stop_after_gen", "budget_mult",
+        keep = {"steps", "resume", "device", "quiet", "rows_budget", "stop_after_gen", "budget_mult", "sym_every",
                 "ckpt_every"}
         for k, v in resume["config"].items():
             if k not in keep:
@@ -272,18 +274,29 @@ def main(argv=None):
         N = len(idx)
         return dict(loss=loss / (N * m), tok=tok / (N * m), exact=ex / N, tok_tf=tok_tf / (N * m), exact_tf=ex_tf / N)
 
+    nan_sym = dict(viol_tok=math.nan, viol_seq=math.nan, viol_tv=math.nan)
+
     def do_eval():
         a, b = eval_split(x_tr, Y_tr, i_tr), eval_split(x_te, Y_te, i_te)
+        a = {k: v.tolist() for k, v in a.items()}  # GPU→CPU 한 번에
+        b = {k: v.tolist() for k, v in b.items()}
+        with torch.no_grad():  # run별 norm을 묶음 전체에서 한 번에 계산
+            sq = sum(v.detach().float().pow(2).flatten(1).sum(1) for v in params.values())
+            pns = sq.sqrt().tolist()
+            ens = params["tok_emb.weight"].detach().float().flatten(1).norm(dim=1).tolist()
+        do_sym = args.sym_every > 0 and (step % args.sym_every == 0 or step in grid)
         for slot, i in enumerate(active):
-            p_i = {k: v[slot].detach() for k, v in params.items()}
-            s = probes[i](MemberView(base, p_i), autocast)
-            pn = math.sqrt(sum(v.float().pow(2).sum().item() for v in p_i.values()))
-            en = p_i["tok_emb.weight"].float().norm().item()
+            if do_sym:
+                p_i = {k: v[slot].detach() for k, v in params.items()}
+                s = probes[i](MemberView(base, p_i), autocast)
+            else:
+                s = nan_sym
+            pn, en = pns[slot], ens[slot]
             row = dict(step=step, lr=lr_at(step), elapsed=round(elapsed, 2),
-                       train_loss=a["loss"][slot].item(), test_loss=b["loss"][slot].item(),
-                       train_tok=a["tok"][slot].item(), test_tok=b["tok"][slot].item(),
-                       train_exact=a["exact"][slot].item(), test_exact=b["exact"][slot].item(),
-                       train_exact_tf=a["exact_tf"][slot].item(), test_exact_tf=b["exact_tf"][slot].item(),
+                       train_loss=a["loss"][slot], test_loss=b["loss"][slot],
+                       train_tok=a["tok"][slot], test_tok=b["tok"][slot],
+                       train_exact=a["exact"][slot], test_exact=b["exact"][slot],
+                       train_exact_tf=a["exact_tf"][slot], test_exact_tf=b["exact_tf"][slot],
                        param_norm=pn, emb_norm=en,
                        sym_viol_tok=s["viol_tok"], sym_viol_seq=s["viol_seq"], sym_viol_tv=s["viol_tv"])
             with (run_dirs[i] / "metrics.csv").open("a", newline="") as f:
