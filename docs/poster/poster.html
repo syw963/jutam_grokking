@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<title>Grokking 포스터 A0</title>
+<style>
+@page { size: 841mm 1189mm; margin: 0; }
+:root{--ink:#16202b;--ink2:#3c4a58;--blue:#1f5fae;--navy:#123a6b;--orange:#e8622c;--green:#16a37b;--gold:#e0a100;--pink:#c4508a;--line:#d5dce3;--bg:#f6f8fa;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:841mm;height:1189mm;background:#fff}
+body{font-family:"Noto Sans CJK KR","Noto Sans CJK JP",sans-serif;color:var(--ink);font-size:24pt;line-height:1.48;word-break:keep-all;}
+.page{width:841mm;height:1189mm;padding:28mm 34mm 22mm;display:flex;flex-direction:column;gap:9mm}
+header{border-bottom:3mm solid var(--navy);padding-bottom:9mm}
+.kicker{font-size:24pt;color:var(--blue);font-weight:700;letter-spacing:.04em}
+h1{font-size:76pt;line-height:1.18;font-weight:900;color:var(--navy);margin:3mm 0 5mm;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--orange)}
+.sub{font-size:30pt;color:var(--ink2);font-weight:500}
+.team{margin-top:7mm;font-size:24pt;color:var(--ink2)}
+.team b{color:var(--ink)}
+h2{font-size:38pt;font-weight:900;color:var(--navy);display:flex;align-items:center;gap:5mm;margin-bottom:5mm}
+h2 .n{display:inline-flex;width:17mm;height:17mm;border-radius:50%;background:var(--navy);color:#fff;font-size:26pt;align-items:center;justify-content:center;flex:none}
+.row{display:grid;gap:12mm}
+.r2{grid-template-columns:1fr 1fr}
+.r55{grid-template-columns:1.12fr .88fr}
+p+p{margin-top:3mm}
+b.o{color:var(--orange)} b.b{color:var(--blue)}
+img{width:100%;display:block}
+.card{background:var(--bg);border-radius:6mm;padding:9mm 10mm}
+.hyp{border-radius:6mm;padding:8mm 9mm;border:1.2mm solid}
+.hyp h3{font-size:29pt;margin-bottom:2mm}
+.hyp.a{border-color:var(--pink);background:#fbf1f6}.hyp.a h3{color:var(--pink)}
+.hyp.b{border-color:var(--blue);background:#eef4fb}.hyp.b h3{color:var(--blue)}
+.rq{background:var(--navy);color:#fff;border-radius:6mm;padding:10mm 12mm;font-size:30pt;font-weight:700;line-height:1.45}
+.rq small{display:block;font-size:22pt;font-weight:400;opacity:.85;margin-bottom:2mm}
+.eq{font-family:"Noto Sans CJK KR",sans-serif;background:#fff;border:.8mm solid var(--line);border-radius:4mm;padding:4mm 7mm;display:inline-block;font-weight:700;font-size:27pt;margin:2mm 0}
+.wire{display:grid;grid-template-columns:repeat(3,1fr);gap:7mm;margin-top:4mm}
+.wire figure{background:#fff;border:.8mm solid var(--line);border-radius:5mm;padding:4mm 4mm 3mm;text-align:center}
+.wire figcaption{font-size:21pt;line-height:1.35;margin-top:1mm}
+.wire figcaption b{display:block;font-size:23pt}
+.result{border:1.5mm solid var(--orange);border-radius:7mm;padding:9mm 11mm 8mm;background:#fff8f4}
+.result h2{color:var(--orange)} .result h2 .n{background:var(--orange)}
+.take{font-size:29pt;font-weight:700;margin-bottom:5mm;line-height:1.4}
+.stats{display:flex;gap:7mm;margin-top:3mm}
+.stat{flex:1;background:var(--bg);border-radius:5mm;padding:6mm 7mm}
+.stat .v{font-size:40pt;font-weight:900;color:var(--navy);line-height:1.1}
+.stat .l{font-size:20pt;color:var(--ink2);line-height:1.35}
+footer{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:12mm;font-size:19pt;color:var(--ink2);border-top:.8mm solid var(--line);padding-top:6mm}
+.guide{background:var(--navy);color:#fff;border-radius:5mm;padding:5mm 9mm;font-size:24pt;font-weight:700;white-space:nowrap}
+.note{font-size:19pt;color:var(--ink2);margin-top:2mm}
+ul{padding-left:9mm} li+li{margin-top:1.5mm}
+</style></head>
+<body><div class="page">
+
+<header>
+  <div class="kicker">수열 변환 규칙 · 작은 Transformer · 지연된 일반화</div>
+  <h1>Grokking의 지연을 정하는 것은<br>규칙의 <em>대칭</em>인가, 데이터의 <em>정보량</em>인가</h1>
+  <div class="sub">같은 연산에 ‘배선’만 바꾼 규칙 가족으로 1,700회 이상의 학습을 비교한 통제 실험</div>
+  <div class="team"><b>김서혁 · 손영우</b> &nbsp;|&nbsp; ○○고등학교 &nbsp;|&nbsp; 지도교사 ○○○</div>
+</header>
+
+<section class="row r55">
+  <div>
+    <h2><span class="n">1</span>Grokking이란?</h2>
+    <p>신경망이 학습 데이터를 <b class="b">먼저 외우고</b>, 한참 뒤에야 갑자기 처음 보는 데이터까지 맞히게 되는(<b class="o">일반화</b>) 현상이다. 2022년 OpenAI 연구진이 모듈러 덧셈에서 처음 보고했다.</p>
+    <p>외운 뒤 일반화까지 걸리는 시간을 <b>지연</b>이라 한다. 무엇이 이 지연을 길게, 또는 짧게 만드는지는 아직 잘 모른다.</p>
+    <p style="margin-top:5mm"><b>우리의 관심</b></p><ul><li>어떤 규칙은 왜 빨리, 어떤 규칙은 늦게 grokking하는가?</li><li>그 차이를 <b>실행하기 전에 예측</b>할 수 있는가?</li></ul>
+  </div>
+  <div class="card" style="padding:6mm 6mm 4mm">
+    <img src="fig_grok.svg" alt="train 정확도는 200 step에 1이 되고, test 정확도는 약 6,000 step에 오르는 grokking 곡선">
+    <div class="note">우리 실험의 한 예(a+3b, 순환 이웃, train 1,280개). 측정 시점을 바탕으로 그린 개념도</div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2</span>우리가 학습시킨 과제</h2>
+  <div class="row r2" style="align-items:start">
+    <div>
+      <p>1~50의 서로 다른 정수 5개로 된 수열을 받아, 각 칸을 <b>자기 값 + 참조한 칸의 값</b>(mod 50)으로 바꾼다.</p>
+      <div class="eq">y<sub>i</sub> = x<sub>i</sub> + x<sub>참조(i)</sub> &nbsp;(mod 50)</div>
+      <p>연산(덧셈)은 모두 같고, <b>어느 칸을 참조하는지(배선)</b>만 다르다. 배선이 바뀌면 규칙의 <b>대칭</b>이 달라진다.</p>
+    </div>
+    <div class="card" style="padding:7mm 9mm">
+      <p style="font-size:22pt;color:var(--ink2)">예: 오른쪽 이웃을 참조 (순환)</p>
+      <p style="font-size:30pt;font-weight:700;letter-spacing:.02em">[12, 7, 33, 41, 5] → [19, 40, 24, 46, 17]</p>
+      <p style="font-size:21pt;color:var(--ink2)">12+7, 7+33, 33+41=74→24, 41+5, 5+12</p>
+      <p style="font-size:22pt;margin-top:3mm"><b>대칭(등변군)</b>: 입력 칸을 섞었을 때 출력도 똑같이 섞이게 하는 순서 바꾸기의 모임. 클수록 대칭이 크다.</p>
+    </div>
+  </div>
+  <div class="wire">
+    <figure>
+      <svg viewBox="0 0 300 120" width="100%"><defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0L10,5L0,10z" fill="#1f5fae"/></marker></defs>
+        <g font-size="20" text-anchor="middle" font-weight="700">
+        <rect x="10" y="70" width="44" height="40" rx="7" fill="#eef4fb" stroke="#1f5fae" stroke-width="2"/><text x="32" y="97">x₁</text>
+        <rect x="68" y="70" width="44" height="40" rx="7" fill="#eef4fb" stroke="#1f5fae" stroke-width="2"/><text x="90" y="97">x₂</text>
+        <rect x="126" y="70" width="44" height="40" rx="7" fill="#eef4fb" stroke="#1f5fae" stroke-width="2"/><text x="148" y="97">x₃</text>
+        <rect x="184" y="70" width="44" height="40" rx="7" fill="#eef4fb" stroke="#1f5fae" stroke-width="2"/><text x="206" y="97">x₄</text>
+        <rect x="242" y="70" width="44" height="40" rx="7" fill="#eef4fb" stroke="#1f5fae" stroke-width="2"/><text x="264" y="97">x₅</text></g>
+        <g fill="none" stroke="#1f5fae" stroke-width="2.5" marker-end="url(#a1)">
+        <path d="M90,68 Q61,40 34,66"/><path d="M148,68 Q119,40 92,66"/><path d="M206,68 Q177,40 150,66"/><path d="M264,68 Q235,40 208,66"/><path d="M32,68 Q148,-12 262,66"/></g>
+      </svg>
+      <figcaption><b>순환 이웃</b>등변군 5 (Z₅)</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 300 120" width="100%"><defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0L10,5L0,10z" fill="#c4508a"/></marker></defs>
+        <g font-size="20" text-anchor="middle" font-weight="700">
+        <rect x="10" y="70" width="44" height="40" rx="7" fill="#fbf1f6" stroke="#c4508a" stroke-width="2"/><text x="32" y="97">x₁</text>
+        <rect x="68" y="70" width="44" height="40" rx="7" fill="#fbf1f6" stroke="#c4508a" stroke-width="2"/><text x="90" y="97">x₂</text>
+        <rect x="126" y="70" width="44" height="40" rx="7" fill="#fbf1f6" stroke="#c4508a" stroke-width="2"/><text x="148" y="97">x₃</text>
+        <rect x="184" y="70" width="44" height="40" rx="7" fill="#fbf1f6" stroke="#c4508a" stroke-width="2"/><text x="206" y="97">x₄</text>
+        <rect x="242" y="70" width="44" height="40" rx="7" fill="#fbf1f6" stroke="#c4508a" stroke-width="2"/><text x="264" y="97">x₅</text></g>
+        <g fill="none" stroke="#c4508a" stroke-width="2.5" marker-end="url(#a2)">
+        <path d="M32,68 Q57,38 88,66"/><path d="M32,68 Q88,18 146,66"/><path d="M32,68 Q118,0 204,66"/><path d="M32,68 Q148,-18 262,66"/></g>
+      </svg>
+      <figcaption><b>첫 칸 참조</b>등변군 24 (S₄)</figcaption>
+    </figure>
+    <figure>
+      <svg viewBox="0 0 300 120" width="100%"><defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0L10,5L0,10z" fill="#5c6977"/></marker></defs>
+        <g font-size="20" text-anchor="middle" font-weight="700">
+        <rect x="10" y="70" width="44" height="40" rx="7" fill="#f1f3f5" stroke="#5c6977" stroke-width="2"/><text x="32" y="97">x₁</text>
+        <rect x="68" y="70" width="44" height="40" rx="7" fill="#f1f3f5" stroke="#5c6977" stroke-width="2"/><text x="90" y="97">x₂</text>
+        <rect x="126" y="70" width="44" height="40" rx="7" fill="#f1f3f5" stroke="#5c6977" stroke-width="2"/><text x="148" y="97">x₃</text>
+        <rect x="184" y="70" width="44" height="40" rx="7" fill="#f1f3f5" stroke="#5c6977" stroke-width="2"/><text x="206" y="97">x₄</text>
+        <rect x="242" y="70" width="44" height="40" rx="7" fill="#f1f3f5" stroke="#5c6977" stroke-width="2"/><text x="264" y="97">x₅</text></g>
+        <g fill="none" stroke="#5c6977" stroke-width="2.5" marker-end="url(#a3)">
+        <path d="M148,68 Q90,26 34,66"/><path d="M32,68 Q61,40 88,66"/><path d="M32,68 Q90,14 146,66"/><path d="M264,68 Q235,40 208,66"/><path d="M148,68 Q206,26 262,66"/></g>
+      </svg>
+      <figcaption><b>무작위 배선</b>등변군 1 (대칭 없음)</figcaption>
+    </figure>
+  </div>
+  <p class="note">화살표: 출력 칸 i가 참조하는 칸. 실제로는 이런 배선 13가지(등변군 크기 1·2·5·6·24)를 비교했다.</p>
+</section>
+
+<section>
+  <h2><span class="n">3</span>연구 질문과 두 가설</h2>
+  <div class="rq"><small>연구 질문</small>같은 연산을 배우는 규칙들 사이에서, grokking이 일어나는 데이터 양의 경계와 지연을 결정하는 것은 무엇인가?</div>
+  <div class="row r2" style="margin-top:8mm">
+    <div class="hyp a"><h3>가설 A · 대칭</h3>규칙의 대칭(등변군)이 클수록 구조가 단순하므로, 더 적은 데이터로 더 빨리 일반화할 것이다.</div>
+    <div class="hyp b"><h3>가설 B · 정보량</h3>예제 하나가 연산 표(덧셈 표)에 대해 주는 <b>서로 다른 정보의 수</b>가 많을수록 빨리 일반화할 것이다.</div>
+  </div>
+  <div class="card" style="margin-top:8mm">
+    <b>두 가설을 가르는 방법.</b> 덧셈 a+b는 교환법칙 때문에 배선에 따라 같은 쌍을 두 번 주기도 한다. 연산을 <b class="o">a+3b</b>로 바꾸면 <b>대칭은 그대로</b>인데 <b>모든 배선의 정보량이 같아진다</b>. 이때 배선 간 차이가 남으면 가설 A, 사라지면 가설 B.
+  </div>
+</section>
+
+<section class="result">
+  <h2><span class="n">4</span>미리 보는 핵심 결과</h2>
+  <div class="take">대칭은 지연을 설명하지 못했고, <span style="color:var(--orange)">연산 표의 한 칸을 train에서 몇 번 보는가(칸당 관찰 수)</span>가 서로 다른 규칙들을 하나의 곡선 위에 모았다.</div>
+  <div class="row" style="grid-template-columns:.7fr 1.3fr;gap:8mm;align-items:end">
+    <img src="fig_sym.svg" alt="등변군 크기별 지연: 크기 순서와 지연 순서가 맞지 않음">
+    <img src="fig_obs.svg" alt="칸당 관찰 수가 늘수록 지연이 줄어드는 하나의 곡선">
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="v">−0.1 ~ −0.3</div><div class="l">대칭 크기와 지연의 상관</div></div>
+    <div class="stat"><div class="v">−0.93</div><div class="l">칸당 관찰 수와 지연의 상관</div></div>
+    <div class="stat"><div class="v">1.1배</div><div class="l">새 조건에서 사전 예측과의 평균 차이</div></div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    모델: 2층 Transformer (d=128) · AdamW, weight decay 1.0, lr 3×10⁻⁴ · 판정: train 99%, test 95% 완전 일치<br>
+    참고: Power et al. (2022), Grokking: Generalization Beyond Overfitting on Small Algorithmic Datasets<br>
+    코드: github.com/syw963/jutam_grokking
+  </div>
+  <div class="guide">◀ 방법 &nbsp;·&nbsp; 결과·결론 ▶</div>
+</footer>
+
+</div></body></html>
