@@ -59,7 +59,9 @@ def pick_device(name):
         return torch.device("cuda")
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return torch.device("mps")
-    return torch.device("cpu")
+    # GPU가 있는 줄 알았는데 못 찾은 경우(예: 없는 CUDA_VISIBLE_DEVICES 번호)를 조용히 CPU로 넘기지 않는다
+    sys.exit("GPU를 찾지 못했습니다. CUDA_VISIBLE_DEVICES 값과 nvidia-smi를 확인하세요. "
+             "CPU로 돌리려면 --device cpu를 명시하세요.")
 
 
 def make_autocast(device, dtype):
