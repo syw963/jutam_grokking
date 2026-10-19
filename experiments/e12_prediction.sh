@@ -51,7 +51,7 @@ wait
 grep -h "실패" runs_e12*.sweep.log || true
 
 python analyze_boundary.py runs_e12_w5 runs_e12_w1 runs_e12_w6 runs_e12_w2 runs_e12_w5n3 runs_e12_w6n3 --out e12_report || true
-python analyze_obs.py e12_report/by_graph.csv --out e12_report/obs_curve.png || true
+python analyze_obs.py "runs_e12_*" --out e12_report/obs || true
 python analyze.py "runs_e12b_*/*" --out e12_report/partB.csv --group-out e12_report/partB_grouped.csv || true
 tar czf e12_results.tgz --exclude='*.pt' runs_e12* e12_report data/e12_*/meta.json
 echo "끝: e12_results.tgz"
