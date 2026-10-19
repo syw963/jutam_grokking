@@ -379,11 +379,13 @@ def _apply_ref(xs, step: Step, n: int):
     """1층 규칙: y_i = T(x_i, 참조값_i)."""
     m, mode = len(xs), step.mode
     op = step.p("op")
-    if op not in ("add", "table"):
-        raise RuleError("REF의 op는 add 또는 table")
+    if op not in ("add", "add3", "table"):
+        raise RuleError("REF의 op는 add, add3, table 중 하나")
     if op == "table":
         tab = _op_table(n, int(step.p("tseed")))
         T = lambda a, b: tab[(a - 1) % n][(b - 1) % n]
+    elif op == "add3":  # T(a,b) = a + 3b: 교환법칙이 없는 덧셈 (3과 50은 서로소라 b에 대해 일대일)
+        T = lambda a, b: a + 3 * b
     else:
         T = lambda a, b: a + b
     if mode == "sortnext":
@@ -418,18 +420,52 @@ def ref_pairs(step: Step, xs, n: int):
     return [(xs[i], xs[w[i]]) for i in range(m)]
 
 
-def op_coverage(rule: "Rule", train_x) -> float | None:
-    """REF 한 단계짜리 규칙에서, train이 연산 표 n×n 중 몇 칸을 보여주는지.
+def ref_graph(rule: "Rule", m: int = 5) -> dict | None:
+    """REF 한 단계 규칙의 참조 그래프: 출력 칸 i가 (i, 참조 칸)을 잇는 간선.
 
-    출력 한 칸 = T(자기 값, 참조값)이므로 train에 나온 서로 다른 (자기 값, 참조값) 쌍의 비율.
+    edges_unordered: 서로 다른 무순서 간선 수 (교환법칙이 있는 연산에서 한 예제가 주는 서로 다른 정보 수)
+    edges_ordered:   서로 다른 순서쌍 간선 수 (교환법칙이 없는 연산 기준)
+    connected:       자기 자신 참조를 뺀 무순서 그래프가 m개 칸을 모두 잇는가
+    """
+    if len(rule.steps) != 1 or rule.steps[0].code != "REF":
+        return None
+    st = rule.steps[0]
+    probe = list(range(1, m + 1))
+    pairs = ref_pairs(st, probe, rule.n) if st.mode not in ("sum", "sortnext") else []
+    if not pairs:
+        return dict(edges_unordered=None, edges_ordered=None, connected=None)
+    und = {frozenset(p) for p in pairs}
+    parent = list(range(m + 1))
+
+    def find(a):
+        while parent[a] != a:
+            a = parent[a]
+        return a
+    for e in und:
+        if len(e) == 2:
+            a, b = tuple(e)
+            parent[find(a)] = find(b)
+    connected = len({find(v) for v in probe}) == 1
+    return dict(edges_unordered=len(und), edges_ordered=len(set(pairs)), connected=connected)
+
+
+def op_coverage(rule: "Rule", train_x) -> float | None:
+    """REF 한 단계짜리 규칙에서, train이 연산 표 중 몇 칸을 보여주는지.
+
+    출력 한 칸 = T(자기 값, 참조값). 연산이 교환법칙을 만족하면(op=add) T(a,b)=T(b,a)이므로
+    무순서 쌍 {a,b}의 비율(분모 n(n+1)/2), 아니면(add3, table) 순서쌍 (a,b)의 비율(분모 n²).
     REF 한 단계가 아닌 규칙은 None.
     """
     if len(rule.steps) != 1 or rule.steps[0].code != "REF":
         return None
+    st = rule.steps[0]
+    commutative = st.p("op") == "add"
     seen = set()
     for row in train_x:
-        seen.update(ref_pairs(rule.steps[0], list(row), rule.n))
-    return len(seen) / (rule.n * rule.n)
+        for a, b in ref_pairs(st, list(row), rule.n):
+            seen.add(frozenset((a, b)) if commutative else (a, b))
+    n = rule.n
+    return len(seen) / (n * (n + 1) / 2 if commutative else n * n)
 
 
 # ---------------------------------------------------------------------------
@@ -510,6 +546,15 @@ PRESETS: dict[str, str] = {
     "w1_m0": "REF:map(op=add,seed=0)",    # (1,4,0,4,3)
     "w1_m2": "REF:map(op=add,seed=2)",    # (4,0,0,1,0)
     "w1_m8": "REF:map(op=add,seed=8)",    # (1,3,3,1,0)
+    # 같은 배선, 연산만 T(a,b) = a + 3b (교환법칙 없음). 이름 끝 _n3
+    "w5_next_n3": "REF:next(op=add3)",
+    "w5_p2_n3": "REF:perm(op=add3,seed=2)",
+    "w6_p1_n3": "REF:perm(op=add3,seed=1)",
+    "w6_p4_n3": "REF:perm(op=add3,seed=4)",
+    "w2_m4_n3": "REF:map(op=add3,seed=4)",
+    "w2_m12_n3": "REF:map(op=add3,seed=12)",
+    "w2_m15_n3": "REF:map(op=add3,seed=15)",
+    "w1_m0_n3": "REF:map(op=add3,seed=0)",
     # RQ2 본 실험 사슬
     "c_sum_sort_nb": "S:sum > A:asc > AF:sum",
     "c_sort_nb_sort": "A:asc > AF:sum > A:asc",
@@ -671,6 +716,7 @@ def analyze(spec: str, n: int = 50, m: int = 5, n_probe: int = 200, seed: int = 
         trivial=constant or depth["effective_depth"] == 0,
         # 원소별 표 찾기로 끝나는 규칙 (출력 한 칸 = 같은 자리 입력 하나의 고정 함수)
         pointwise=(n_eq == math.factorial(m) and dep["max"] <= 1),
+        ref_graph=ref_graph(rule, m),
         distinct_outputs_frac=len(set(outs)) / len(outs),
     )
 

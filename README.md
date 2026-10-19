@@ -179,7 +179,8 @@ param_norm, emb_norm, sym_viol_tok(어긋난 칸 비율), sym_viol_seq(수열 �
 | `analyze.py` | 결과 표 |
 | `plot.py` | 학습 곡선 |
 | `experiments/boundary.sh` | 경계 정밀 측정 실험 (배선 대칭 비교) |
-| `analyze_boundary.py` | 경계 실험 결과 정리: 대칭 크기별 일반화 비율·지연 표와 그래프, w5_next vs w5_p0 검증 |
+| `analyze_boundary.py` | 경계 실험 결과 정리: 대칭 크기별·참조 그래프별 일반화 비율·지연 표와 그래프, w5_next vs w5_p0 검증 |
+| `experiments/commute.sh` | E7 교환법칙 실험 (a+3b) |
 
 ## 참고한 이전 작업
 
