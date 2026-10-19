@@ -33,15 +33,19 @@ def main():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(1, 2, figsize=(11, 4))
-    for (op, p), s in t.groupby(["op", "pairs"]):
+    for name, s in t.groupby("name"):
+        op, p = s.op.iloc[0], s.pairs.iloc[0]
         mk = "o" if op == "a+b" else "s"
-        lab = f"{op}, {p} pairs/example"
+        lab = f"{op}, {p} pairs/example" + (", connected" if "연결" in name else ", split" if "끊김" in name else "")
         ax[0].plot(s.obs_per_cell, s.grok_rate, mk + "-", label=lab, alpha=.8)
         ax[1].plot(s.obs_per_cell, s.delay_median, mk + "-", label=lab, alpha=.8)
     ax[0].set_ylabel("fraction of runs generalized")
     ax[1].set_ylabel("delay (median steps)"); ax[1].set_yscale("log")
     for x in ax:
         x.set_xlabel("observations per table cell"); x.grid(alpha=.3); x.legend(fontsize=7)
+    xs = np.linspace(t.obs_per_cell.min(), t.obs_per_cell.max(), 50)
+    ax[1].plot(xs, 10 ** (5.78 - 0.754 * xs), "k--", lw=1, label="E12 prediction (fit to E6+E7)")
+    ax[1].legend(fontsize=7)
     fig.tight_layout(); fig.savefig(a.out, dpi=120)
     print("저장:", a.out)
 
