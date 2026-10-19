@@ -146,9 +146,10 @@ def summarize(rows):
         last = rs[-1]
         gen = next((r["step"] for r in rs if r["test_exact"] >= 0.95), None)
         unseen50 = next((r["step"] for r in rs if r["acc_unseen"] >= 0.5), None)
+        seen50 = next((r["step"] for r in rs if r["acc_seen"] >= 0.5), None)
         four = next((r["step"] for r in rs if r.get("emb_top5", 0) >= 0.5), None)
         out.append(dict(run=run, rule=last["rule"], train=last["train"], seed=last["seed"],
-                        unseen_frac=round(last["unseen_frac"], 3), ckpt_gen=gen, ckpt_unseen50=unseen50,
+                        unseen_frac=round(last["unseen_frac"], 3), ckpt_gen=gen, ckpt_seen50=seen50, ckpt_unseen50=unseen50,
                         ckpt_emb_fourier50=four, final_acc_seen=round(last["acc_seen"], 3),
                         final_acc_unseen=round(last["acc_unseen"], 3),
                         final_emb_top5=round(last.get("emb_top5", float("nan")), 3),
