@@ -153,7 +153,10 @@ def main(argv=None):
         rule = Rule(mb["rule"], n)
         rd = runs_dir / mb["name"]
         if not resume and rd.exists() and (rd / "metrics.csv").exists():
-            sys.exit(f"이미 있는 run입니다: {rd}")
+            # 같은 묶음이 체크포인트 저장 전에 끊긴 경우만 처음부터 다시 쓴다
+            prev = json.loads((rd / "config.json").read_text()).get("group") if (rd / "config.json").exists() else None
+            if prev != gid:
+                sys.exit(f"이미 있는 run입니다: {rd}")
         rd.mkdir(parents=True, exist_ok=True)
         ip = rd / "rule_info.json"
         info = json.loads(ip.read_text()) if ip.exists() else analyze(rule.spec, n, m)
