@@ -96,6 +96,8 @@ def main():
     ap.add_argument("--multi", action="store_true",
                     help="같은 데이터·모델의 run을 묶어 train_multi.py 한 프로세스로 학습")
     ap.add_argument("--group-size", type=int, default=32, help="--multi에서 한 묶음의 최대 run 수")
+    ap.add_argument("--gpus", help="쓸 GPU 번호 목록 (예: 0,1,2,3) 또는 all. 주면 --jobs는 GPU 하나당 동시 실행 수")
+    ap.add_argument("--shard", help="여러 서버에 나눠 돌릴 때 i/N (예: 0/3, 1/3, 2/3). 작업 목록의 i번째, i+N번째...만 실행")
     a = ap.parse_args(argv)
 
     rules = list(a.rules)
@@ -121,7 +123,19 @@ def main():
             cmd += extra
         jobs.append((name, cmd, run_dir))
 
-    print(f"실행할 {'묶음' if a.multi else 'run'} {len(jobs)}개")
+    if a.shard:
+        i, n = (int(v) for v in a.shard.split("/"))
+        jobs = [j for k, j in enumerate(jobs) if k % n == i]
+    gpus = None
+    if a.gpus:
+        if a.gpus == "all":
+            import torch
+            gpus = [str(g) for g in range(torch.cuda.device_count())]
+        else:
+            gpus = [g.strip() for g in a.gpus.split(",") if g.strip()]
+        if not gpus:
+            sys.exit("GPU를 찾지 못했습니다")
+    print(f"실행할 {'묶음' if a.multi else 'run'} {len(jobs)}개" + (f", GPU {','.join(gpus)} × {a.jobs}" if gpus else ""))
     if a.dry_run:
         for _, cmd, _ in jobs:
             print(" ".join(cmd))
@@ -130,20 +144,34 @@ def main():
     Path(a.runs_dir).mkdir(parents=True, exist_ok=True)
     manifest = Path(a.runs_dir) / "sweep_log.jsonl"
 
+    import os
+    import queue
+    slots = queue.Queue()
+    for _ in range(a.jobs):
+        for g in (gpus or [None]):
+            slots.put(g)
+
     def run(job):
         name, cmd, run_dir = job
+        gpu = slots.get()
         t0 = time.time()
         log = Path(a.runs_dir) / f"{name}.log"
-        with log.open("a") as f:
-            rc = subprocess.call(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent)
-        rec = dict(name=name, returncode=rc, seconds=round(time.time() - t0, 1), cmd=cmd)
+        env = dict(os.environ)
+        if gpu is not None:
+            env["CUDA_VISIBLE_DEVICES"] = gpu
+        try:
+            with log.open("a") as f:
+                rc = subprocess.call(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent, env=env)
+        finally:
+            slots.put(gpu)
+        rec = dict(name=name, returncode=rc, seconds=round(time.time() - t0, 1), gpu=gpu, cmd=cmd)
         with manifest.open("a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         status = "완료" if rc == 0 else f"실패({rc}) → {log}"
-        print(f"[{status}] {name} {rec['seconds']}s", flush=True)
+        print(f"[{status}] {name} {rec['seconds']}s" + (f" (GPU {gpu})" if gpu is not None else ""), flush=True)
         return rc
 
-    with ThreadPoolExecutor(max_workers=a.jobs) as ex:
+    with ThreadPoolExecutor(max_workers=a.jobs * (len(gpus) if gpus else 1)) as ex:
         rcs = list(ex.map(run, jobs))
     fails = sum(1 for r in rcs if r != 0)
     print(f"끝: {len(rcs) - fails}개 성공, {fails}개 실패")
