@@ -84,6 +84,8 @@ def parse_args(argv=None):
     ap.add_argument("--beta2", type=float, default=0.98)
     ap.add_argument("--warmup", type=int, default=100)
     ap.add_argument("--batch-size", type=int, default=-1, help="-1: full batch, 양수: run별 복원추출")
+    ap.add_argument("--train-mask", type=int, default=0,
+                    help="k>0: train 예제마다 출력 칸 k개만 loss에 넣는다(고정, 예제별 무작위). train 정확도도 그 칸만 잰다")
     ap.add_argument("--steps", type=int, default=100000)
     ap.add_argument("--eval-every", type=int, default=100)
     ap.add_argument("--n-eval", type=int, default=4096)
@@ -150,6 +152,11 @@ def main(argv=None):
     g = torch.Generator().manual_seed(1)
     pick = lambda N, k: (torch.arange(N) if k < 0 or k >= N else torch.randperm(N, generator=g)[:k]).to(device)
     i_tr, i_te = pick(len(x_tr), args.n_eval), pick(len(x_te), args.n_eval)
+    mask_tr = None  # (N, m) bool: loss에 넣는 train 출력 칸
+    if args.train_mask > 0:
+        g = torch.Generator().manual_seed(12345)
+        r = torch.rand(len(x_tr), meta["m"], generator=g)
+        mask_tr = (r.argsort(1).argsort(1) < args.train_mask).to(device)
     i_probe = pick(len(x_te), args.sym_probe)
 
     rules, infos, Y_tr, Y_te, probes, run_dirs, covs = [], [], [], [], [], [], []
@@ -255,11 +262,12 @@ def main(argv=None):
         (run_dirs[i] / "summary.json").write_text(json.dumps(summ, indent=2, ensure_ascii=False))
 
     @torch.no_grad()
-    def eval_split(x, Y, idx):
-        """활성 run 전체를 한꺼번에 평가. 반환: 지표 이름 -> (A,) 텐서."""
+    def eval_split(x, Y, idx, mask=None):
+        """활성 run 전체를 한꺼번에 평가. 반환: 지표 이름 -> (A,) 텐서. mask가 있으면 그 칸만 잰다."""
         A = len(active)
         Ya = Y[active][:, idx]
         xs = x[idx]
+        ms = mask[idx] if mask is not None else None
         loss = torch.zeros(A, device=device)
         tok = torch.zeros(A, device=device); ex = torch.zeros(A, device=device)
         tok_tf = torch.zeros(A, device=device); ex_tf = torch.zeros(A, device=device)
@@ -269,17 +277,19 @@ def main(argv=None):
             with autocast():
                 lg = vmap(f_logits, in_dims=(0, None, 0))(params, xb, yb).float()
                 pr = vmap(f_pred, in_dims=(0, None))(params, xb)
-            loss += F.cross_entropy(lg.permute(0, 3, 1, 2), yb, reduction="none").sum((1, 2))
+            mb = ms[s:s + chunk].unsqueeze(0) if ms is not None else torch.ones_like(yb[:1], dtype=torch.bool)
+            loss += (F.cross_entropy(lg.permute(0, 3, 1, 2), yb, reduction="none") * mb).sum((1, 2))
             am = lg.argmax(-1)
-            tok_tf += (am == yb).float().sum((1, 2)); ex_tf += (am == yb).all(-1).float().sum(1)
-            tok += (pr == yb).float().sum((1, 2)); ex += (pr == yb).all(-1).float().sum(1)
+            tok_tf += ((am == yb) & mb).float().sum((1, 2)); ex_tf += ((am == yb) | ~mb).all(-1).float().sum(1)
+            tok += ((pr == yb) & mb).float().sum((1, 2)); ex += ((pr == yb) | ~mb).all(-1).float().sum(1)
         N = len(idx)
-        return dict(loss=loss / (N * m), tok=tok / (N * m), exact=ex / N, tok_tf=tok_tf / (N * m), exact_tf=ex_tf / N)
+        T = float(ms.sum()) if ms is not None else N * m
+        return dict(loss=loss / T, tok=tok / T, exact=ex / N, tok_tf=tok_tf / T, exact_tf=ex_tf / N)
 
     nan_sym = dict(viol_tok=math.nan, viol_seq=math.nan, viol_tv=math.nan)
 
     def do_eval():
-        a, b = eval_split(x_tr, Y_tr, i_tr), eval_split(x_te, Y_te, i_te)
+        a, b = eval_split(x_tr, Y_tr, i_tr, mask_tr), eval_split(x_te, Y_te, i_te)
         a = {k: v.tolist() for k, v in a.items()}  # GPU→CPU 한 번에
         b = {k: v.tolist() for k, v in b.items()}
         with torch.no_grad():  # run별 norm을 묶음 전체에서 한 번에 계산
@@ -372,7 +382,11 @@ def main(argv=None):
                     yb = torch.gather(Ya, 1, ib.unsqueeze(-1).expand(-1, -1, m))
                     lg = vmap(f_logits, in_dims=(0, 0, 0))(params, x_tr[ib], yb)
             ce = F.cross_entropy(lg.float().permute(0, 3, 1, 2), yb, reduction="none")
-            (ce.sum((1, 2)) / (B * m)).sum().backward()
+            if mask_tr is None:
+                (ce.sum((1, 2)) / (B * m)).sum().backward()
+            else:
+                mb = mask_tr[s:s + chunk].unsqueeze(0) if shared else mask_tr[ib]
+                (( ce * mb).sum((1, 2)) / (B * args.train_mask)).sum().backward()
         with torch.no_grad():  # decoupled weight decay (run별 wd)
             w = wd[active]
             for v in params.values():

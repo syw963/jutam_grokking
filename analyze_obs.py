@@ -47,9 +47,12 @@ def from_runs(dirs):
         op = rule.steps[0].p("op")
         comm = op == "add"
         pairs = g["edges_unordered"] if comm else g["edges_ordered"]
+        k = c.get("train_mask", 0) or 0
+        if k:  # 출력 칸 k개만 학습: 5쌍 규칙(w5 계열)에서는 예제당 서로 다른 쌍도 k개
+            pairs = min(pairs, k)
         cells = n * (n + 1) / 2 if comm else n * n
         N = c["data_meta"]["train_sets"]
-        variant = f"d{c['d']}L{c['layers']}" + (f" wd{c['wd']:g}" if c["wd"] != 1.0 else "")
+        variant = f"d{c['d']}L{c['layers']}" + (f" wd{c['wd']:g}" if c["wd"] != 1.0 else "") + (f" k{k}" if k else "")
         tf, tg = s.get("t_fit"), s.get("t_gen")
         rows.append(dict(n=n, op="a+b" if comm else "a+3b", pairs=pairs, connected=g.get("connected"),
                          variant=variant, rule=c["rule"], train=N, obs_per_cell=N * pairs / cells,
