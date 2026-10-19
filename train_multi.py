@@ -87,7 +87,7 @@ def parse_args(argv=None):
     ap.add_argument("--steps", type=int, default=100000)
     ap.add_argument("--eval-every", type=int, default=100)
     ap.add_argument("--n-eval", type=int, default=4096)
-    ap.add_argument("--rows-budget", type=int, default=65536,
+    ap.add_argument("--rows-budget", type=int, default=16384,
                     help="한 번에 계산할 (run 수 × 행 수) 상한. 넘으면 나눠 계산하고 gradient를 모은다 (결과 같음)")
     ap.add_argument("--sym-probe", type=int, default=512)
     ap.add_argument("--sym-sigmas", type=int, default=8)

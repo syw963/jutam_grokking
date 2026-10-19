@@ -138,7 +138,7 @@ full batch(`--batch-size -1`), 100 step마다 평가 + 1·2·5·10·20·… step
   (테스트 `test_train_multi_matches_single`에서 지표가 같은지 확인).
 - 평가용 train/test 부분집합은 묶음이 공유한다 (`--n-eval -1`이면 차이 없음).
 - `--stop-after-gen`으로 끝난 run은 묶음에서 빠지고 남은 run만 계속 학습한다.
-- `--rows-budget`(기본 65536)를 넘는 (run 수 × 행 수)는 나눠 계산하고 gradient를 모은다. 결과는 같고 메모리만 줄어든다.
+- `--rows-budget`(기본 16384)를 넘는 (run 수 × 행 수)는 나눠 계산하고 gradient를 모은다. 결과는 같고 메모리만 줄어든다.
   GPU 메모리가 부족하면 이 값을 줄인다.
 - 출력 폴더와 파일은 train.py와 같다. 이어 학습용 체크포인트만 `runs/_groups/<묶음>/ckpt_last.pt`에 있다.
 - `sweep.py --multi`는 끊긴 묶음을 다시 실행하면 이어서 돌리고, 끝난 run은 건너뛴다.
