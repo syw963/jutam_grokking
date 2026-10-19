@@ -77,6 +77,63 @@ def multi_jobs(a, rules, extra):
     return jobs
 
 
+
+def _arg(cmd, flag, default=None):
+    return cmd[cmd.index(flag) + 1] if flag in cmd else default
+
+
+def estimate_cost(cmd):
+    """작업의 대략적인 계산량: 한 step의 행 수 × run 수 × 모델 크기 × step 수 (난이도는 모름)."""
+    try:
+        data = _arg(cmd, "--data")
+        rows = json.loads((Path(data) / "meta.json").read_text())["train_rows"] if data else 1000
+        bs = int(_arg(cmd, "--batch-size", -1))
+        if bs > 0:
+            rows = bs
+        mem = _arg(cmd, "--members")
+        k = len(json.loads(Path(mem).read_text())["members"]) if mem and Path(mem).exists() else 1
+        d, L = int(_arg(cmd, "--d", 128)), int(_arg(cmd, "--layers", 2))
+        steps = int(_arg(cmd, "--steps", 10000))
+        return rows * k * (d / 128) ** 2 * (L / 2) * steps
+    except Exception:
+        return 0
+
+
+class GpuLoad:
+    """같은 서버에서 도는 모든 sweep이 함께 쓰는 GPU 부하 기록 (/tmp/jutam_gpu_load.json, 파일 잠금).
+    GPU마다 지금 돌고 있는 학습 프로세스 pid를 적어 두고, 죽은 pid는 읽을 때 지운다."""
+    PATH = Path("/tmp/jutam_gpu_load.json")
+
+    def __enter__(self):
+        import fcntl
+        self.f = open(str(self.PATH) + ".lock", "w")
+        fcntl.flock(self.f, fcntl.LOCK_EX)
+        try:
+            self.d = json.loads(self.PATH.read_text())
+        except Exception:
+            self.d = {}
+        import os
+        def alive(pid):
+            try:
+                os.kill(pid, 0)
+                return True
+            except OSError:
+                return False
+        self.d = {g: [p for p in ps if alive(p)] for g, ps in self.d.items()}
+        return self
+
+    def pick(self, gpus):
+        return min(gpus, key=lambda g: (len(self.d.get(g, [])), gpus.index(g)))
+
+    def add(self, gpu, pid):
+        self.d.setdefault(gpu, []).append(pid)
+
+    def __exit__(self, *exc):
+        import fcntl
+        self.PATH.write_text(json.dumps(self.d))
+        fcntl.flock(self.f, fcntl.LOCK_UN)
+        self.f.close()
+
 def main():
     argv = sys.argv[1:]
     extra = []
@@ -145,25 +202,27 @@ def main():
     manifest = Path(a.runs_dir) / "sweep_log.jsonl"
 
     import os
-    import queue
-    slots = queue.Queue()
-    for _ in range(a.jobs):
-        for g in (gpus or [None]):
-            slots.put(g)
+
+    # 오래 걸릴 작업부터 시작한다(긴 작업이 마지막에 남아 GPU 하나만 도는 것을 줄인다).
+    jobs.sort(key=lambda j: -estimate_cost(j[1]))
 
     def run(job):
         name, cmd, run_dir = job
-        gpu = slots.get()
-        t0 = time.time()
         log = Path(a.runs_dir) / f"{name}.log"
         env = dict(os.environ)
-        if gpu is not None:
-            env["CUDA_VISIBLE_DEVICES"] = gpu
-        try:
-            with log.open("a") as f:
-                rc = subprocess.call(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent, env=env)
-        finally:
-            slots.put(gpu)
+        t0 = time.time()
+        with log.open("a") as f:
+            if gpus:
+                # 같은 서버의 모든 sweep을 통틀어 지금 가장 한가한 GPU에 배정
+                with GpuLoad() as load:
+                    gpu = load.pick(gpus)
+                    env["CUDA_VISIBLE_DEVICES"] = gpu
+                    proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent, env=env)
+                    load.add(gpu, proc.pid)
+            else:
+                gpu = None
+                proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent, env=env)
+            rc = proc.wait()
         rec = dict(name=name, returncode=rc, seconds=round(time.time() - t0, 1), gpu=gpu, cmd=cmd)
         with manifest.open("a") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
