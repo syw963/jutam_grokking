@@ -118,3 +118,22 @@ def test_train_and_resume(tmp_path):
     assert steps == sorted(steps) and steps[-1] == 30
     info = json.loads((tmp_path / "runs" / "r" / "rule_info.json").read_text())
     assert info["eq_size"] == 6  # m=4: 첫 칸 고정 → S3
+
+
+def test_train_multi_matches_single(tmp_path):
+    import train
+    import train_multi
+    s = make_split(12, 4, train_count=60, test_count=30, seed=0)
+    save_split(s, tmp_path / "d")
+    common = ["--data", str(tmp_path / "d"), "--model", "m0", "--d", "32", "--layers", "1", "--heads", "2",
+              "--steps", "20", "--eval-every", "10", "--n-eval", "-1", "--quiet", "--device", "cpu"]
+    for rule, seed in [("l1_first", 0), ("sort", 2)]:
+        train.main(common + ["--rule", rule, "--seed", str(seed), "--runs-dir", str(tmp_path / "single")])
+    (tmp_path / "m.json").write_text(json.dumps([{"rule": "l1_first", "seed": 0}, {"rule": "sort", "seed": 2}]))
+    train_multi.main(common + ["--members", str(tmp_path / "m.json"), "--runs-dir", str(tmp_path / "multi"),
+                               "--rows-budget", "64"])
+    for name in ["l1_first_m0_d_wd1_s0", "sort_m0_d_wd1_s2"]:
+        a = (tmp_path / "single" / name / "metrics.csv").read_text().splitlines()
+        b = (tmp_path / "multi" / name / "metrics.csv").read_text().splitlines()
+        cut = lambda rows: [",".join(r.split(",")[3:9]) for r in rows]  # loss·정확도 열
+        assert cut(a) == cut(b)

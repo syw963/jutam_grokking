@@ -26,6 +26,57 @@ sys.path.insert(0, str(Path(__file__).parent))
 from train import rule_name  # noqa: E402
 
 
+def is_done(run_dir: Path) -> bool:
+    summ = run_dir / "summary.json"
+    return summ.exists() and bool(json.loads(summ.read_text()).get("stop_reason"))
+
+
+def multi_jobs(a, rules, extra):
+    """--multi: (데이터, 모델)별로 run을 묶는다.
+
+    이미 만들어진 묶음(runs/_groups/<id>/members.json)에 끝나지 않은 run이 있으면 그 묶음을 이어서 돌리고,
+    어느 묶음에도 속하지 않은 run만 새 묶음으로 만든다.
+    """
+    from train_multi import group_id, member_name
+    runs = Path(a.runs_dir)
+    groups_dir = runs / "_groups"
+    in_group, jobs = set(), []
+    for mfile in sorted(groups_dir.glob("*/members.json")) if groups_dir.exists() else []:
+        spec = json.loads(mfile.read_text())
+        names = [mb["name"] for mb in spec["members"]]
+        in_group.update(names)
+        if all(is_done(runs / nm) for nm in names):
+            continue
+        ckpt = mfile.parent / "ckpt_last.pt"
+        if ckpt.exists():
+            cmd = [sys.executable, "train_multi.py", "--resume", str(ckpt), "--quiet"]
+            cmd += [x for x in extra if x != "--quiet"]
+        else:
+            cmd = spec["cmd"]
+        jobs.append((mfile.parent.name, cmd, mfile.parent))
+
+    pending = {}
+    for data, model in itertools.product(a.data, a.models):
+        for rule, wd, seed in itertools.product(rules, a.wds, a.seeds):
+            nm = member_name(rule, model, data, wd, seed)
+            if nm in in_group or is_done(runs / nm):
+                continue
+            pending.setdefault((data, model), []).append(dict(rule=rule, seed=seed, wd=wd, name=nm))
+    for (data, model), mbs in pending.items():
+        for s in range(0, len(mbs), a.group_size):
+            chunk = mbs[s:s + a.group_size]
+            gid = group_id([mb["name"] for mb in chunk])
+            gdir = groups_dir / gid
+            cmd = [sys.executable, "train_multi.py", "--data", data, "--model", model,
+                   "--members", str(gdir / "members.json"), "--runs-dir", a.runs_dir, "--quiet"] + extra
+            if not a.dry_run:
+                gdir.mkdir(parents=True, exist_ok=True)
+                (gdir / "members.json").write_text(json.dumps(dict(members=chunk, cmd=cmd), ensure_ascii=False,
+                                                              indent=1))
+            jobs.append((gid, cmd, gdir))
+    return jobs
+
+
 def main():
     argv = sys.argv[1:]
     extra = []
@@ -42,6 +93,9 @@ def main():
     ap.add_argument("--runs-dir", default="runs")
     ap.add_argument("--jobs", type=int, default=1, help="동시에 돌릴 학습 수")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--multi", action="store_true",
+                    help="같은 데이터·모델의 run을 묶어 train_multi.py 한 프로세스로 학습")
+    ap.add_argument("--group-size", type=int, default=32, help="--multi에서 한 묶음의 최대 run 수")
     a = ap.parse_args(argv)
 
     rules = list(a.rules)
@@ -50,8 +104,9 @@ def main():
     if not rules:
         sys.exit("--rules 또는 --rules-file이 필요합니다")
 
-    jobs = []
-    for data, rule, model, wd, seed in itertools.product(a.data, rules, a.models, a.wds, a.seeds):
+    jobs = multi_jobs(a, rules, extra) if a.multi else []
+    for data, rule, model, wd, seed in ([] if a.multi else
+                                        itertools.product(a.data, rules, a.models, a.wds, a.seeds)):
         name = f"{rule_name(rule)}_{model}_{Path(data).name}_wd{wd:g}_s{seed}"
         run_dir = Path(a.runs_dir) / name
         summ = run_dir / "summary.json"
@@ -66,7 +121,7 @@ def main():
             cmd += extra
         jobs.append((name, cmd, run_dir))
 
-    print(f"실행할 run {len(jobs)}개")
+    print(f"실행할 {'묶음' if a.multi else 'run'} {len(jobs)}개")
     if a.dry_run:
         for _, cmd, _ in jobs:
             print(" ".join(cmd))

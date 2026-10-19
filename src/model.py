@@ -35,16 +35,15 @@ class Attention(nn.Module):
         B, T, D = x.shape
         q, k, v = self.qkv(x).split(D, dim=2)
         q, k, v = (t.view(B, T, self.n_head, D // self.n_head).transpose(1, 2) for t in (q, k, v))
+        # 길이가 짧아(최대 11) 직접 계산해도 빠르고, vmap(묶음 학습)에서도 그대로 동작한다.
+        att = (q @ k.transpose(-2, -1)) / math.sqrt(q.size(-1))
+        if causal:
+            mask = torch.ones(T, T, dtype=torch.bool, device=x.device).tril()
+            att = att.masked_fill(~mask, float("-inf"))
+        att = att.softmax(-1)
         if record_attn:
-            att = (q @ k.transpose(-2, -1)) / math.sqrt(q.size(-1))
-            if causal:
-                mask = torch.ones(T, T, dtype=torch.bool, device=x.device).tril()
-                att = att.masked_fill(~mask, float("-inf"))
-            att = att.softmax(-1)
             self.last_attn = att.detach()
-            y = att @ v
-        else:
-            y = F.scaled_dot_product_attention(q, k, v, is_causal=causal)
+        y = att @ v
         return self.proj(y.transpose(1, 2).reshape(B, T, D))
 
 
@@ -105,9 +104,16 @@ class ParallelModel(nn.Module):
     def logits(self, x, y=None):
         return self.head(self.hidden(x)[0])
 
+    def _predict(self, x):
+        return self.logits(x).argmax(-1)
+
     @torch.no_grad()
     def predict(self, x):
-        return self.logits(x).argmax(-1)
+        return self._predict(x)
+
+    def forward(self, x, y=None, predict=False):
+        """torch.func.functional_call용. predict=True면 자유 예측."""
+        return self._predict(x) if predict else self.logits(x, y)
 
 
 class GPTModel(nn.Module):
@@ -143,13 +149,20 @@ class GPTModel(nn.Module):
         seq = torch.cat([self._prefix(x), y[:, :-1]], dim=1)  # 길이 2m+1
         return self._forward(seq)[:, self.m + 1:]  # SEP 자리부터 m개
 
-    @torch.no_grad()
-    def predict(self, x):
+    def _predict(self, x):
         seq = self._prefix(x)
         for _ in range(self.m):
             nxt = self._forward(seq)[:, -1].argmax(-1, keepdim=True)
             seq = torch.cat([seq, nxt], dim=1)
         return seq[:, self.m + 2:]
+
+    @torch.no_grad()
+    def predict(self, x):
+        return self._predict(x)
+
+    def forward(self, x, y=None, predict=False):
+        """torch.func.functional_call용. predict=True면 greedy 생성."""
+        return self._predict(x) if predict else self.logits(x, y)
 
 
 def build_model(kind, n, m, d=128, n_layer=2, n_head=4, tie=None, init_std=0.02):

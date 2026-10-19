@@ -35,6 +35,10 @@ python sweep.py --data data/n50_m5_tr21188_te20000_o1_s0 \
   --models m0 minv meq gpt --seeds 0 1 2 3 4 --jobs 4 \
   -- --steps 100000 --stop-after-gen 2000
 
+#    같은 데이터·모델의 run을 묶어 한 프로세스에서 학습 (권장, 훨씬 빠름)
+python sweep.py --data data/c2048 --rules sort l1_sum l1_first --models m0 --seeds 0 1 2 3 4 \
+  --multi --group-size 32 --jobs 4 -- --steps 100000 --stop-after-gen 2000
+
 # 5. 결과 표와 그래프
 python analyze.py "runs/*" --out results.csv          # run별 + 조건별 요약
 python analyze.py "runs/*" --gen-thr 0.90             # 판정 기준 바꿔 다시 계산
@@ -124,6 +128,22 @@ full batch(`--batch-size -1`), 100 step마다 평가 + 1·2·5·10·20·… step
 
 정확도는 모두 자유 예측 기준이다(`gpt`는 greedy 생성). teacher forcing 정확도는 `*_exact_tf` 열에 따로 있다.
 
+## 묶음 학습 (`train_multi.py`, `sweep.py --multi`)
+
+모델이 작아서 run 하나는 GPU를 거의 쓰지 못하고, 시간 대부분이 매 step의 파이썬·커널 호출에 들어간다.
+그래서 같은 데이터·같은 모델 구조인 run 여러 개(규칙, seed, weight decay만 다름)를 `torch.func.vmap`으로
+묶어 한 프로세스에서 같이 학습한다.
+
+- run마다 초기값, gradient, AdamW 갱신, weight decay가 혼자 학습할 때와 같다
+  (테스트 `test_train_multi_matches_single`에서 지표가 같은지 확인).
+- 평가용 train/test 부분집합은 묶음이 공유한다 (`--n-eval -1`이면 차이 없음).
+- `--stop-after-gen`으로 끝난 run은 묶음에서 빠지고 남은 run만 계속 학습한다.
+- `--rows-budget`(기본 65536)를 넘는 (run 수 × 행 수)는 나눠 계산하고 gradient를 모은다. 결과는 같고 메모리만 줄어든다.
+  GPU 메모리가 부족하면 이 값을 줄인다.
+- 출력 폴더와 파일은 train.py와 같다. 이어 학습용 체크포인트만 `runs/_groups/<묶음>/ckpt_last.pt`에 있다.
+- `sweep.py --multi`는 끊긴 묶음을 다시 실행하면 이어서 돌리고, 끝난 run은 건너뛴다.
+  `--jobs`는 동시에 돌릴 **묶음** 수다.
+
 ## run 출력
 
 ```
@@ -146,7 +166,8 @@ param_norm, emb_norm, sym_viol_tok(어긋난 칸 비율), sym_viol_seq(수열 �
 | `src/data.py` | 값 집합 단위 split |
 | `src/model.py` | 모델 5종 |
 | `src/metrics.py` | 정확도, 대칭 위반, norm |
-| `train.py` | 학습 |
+| `train.py` | 학습 (run 하나) |
+| `train_multi.py` | 묶음 학습 (run 여러 개를 한 프로세스에서) |
 | `sweep.py` | 여러 조건 실행 (`--jobs`로 병렬, 끝난 run 건너뜀, 중단된 run 이어서) |
 | `sample_rules.py` | 2층 규칙 목록 만들기 |
 | `analyze.py` | 결과 표 |
