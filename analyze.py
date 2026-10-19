@@ -35,6 +35,7 @@ def first_step(rows, key, thr, below=False):
 def summarize_run(run_dir: Path, fit_thr, gen_thr, sym_thr):
     cfg = json.loads((run_dir / "config.json").read_text())
     info = json.loads((run_dir / "rule_info.json").read_text())
+    summ = json.loads((run_dir / "summary.json").read_text()) if (run_dir / "summary.json").exists() else {}
     rows = list(csv.DictReader((run_dir / "metrics.csv").open()))
     if not rows:
         return None
@@ -49,6 +50,7 @@ def summarize_run(run_dir: Path, fit_thr, gen_thr, sym_thr):
         sym_kind=info["sym_kind"], inv_size=info["inv_size"], eq_size=info["eq_size"],
         permuting_size=info["permuting_size"], dep_mean=info["dep_mean"],
         effective_depth=info["effective_depth"], nominal_depth=info["nominal_depth"],
+        op_coverage=summ.get("op_coverage"),
         t_fit=t_fit, t_gen=t_gen if not censored else int(last["step"]), censored=int(censored),
         t_sym=t_sym,
         delay=(t_gen - t_fit) if (t_fit is not None and not censored) else None,
@@ -73,7 +75,8 @@ def group_table(rows, keys=("rule", "model", "train_sets", "wd")):
                         delay_median=statistics.median(delays) if delays else None,
                         ratio_median=statistics.median(ratios) if ratios else None,
                         sym_kind=rs[0]["sym_kind"], inv_size=rs[0]["inv_size"], eq_size=rs[0]["eq_size"],
-                        dep_mean=rs[0]["dep_mean"], effective_depth=rs[0]["effective_depth"]))
+                        dep_mean=rs[0]["dep_mean"], effective_depth=rs[0]["effective_depth"],
+                        op_coverage=rs[0]["op_coverage"]))
     return out
 
 

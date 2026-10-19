@@ -37,7 +37,7 @@ from torch.func import functional_call, stack_module_state, vmap
 from src.data import compute_targets, load_split
 from src.metrics import SymmetryProbe
 from src.model import KINDS, build_model
-from src.rules import Rule, analyze
+from src.rules import Rule, analyze, op_coverage
 from train import CSV_FIELDS, log_grid, make_autocast, pick_device, rule_name
 
 
@@ -148,7 +148,8 @@ def main(argv=None):
     i_tr, i_te = pick(len(x_tr), args.n_eval), pick(len(x_te), args.n_eval)
     i_probe = pick(len(x_te), args.sym_probe)
 
-    rules, infos, Y_tr, Y_te, probes, run_dirs = [], [], [], [], [], []
+    rules, infos, Y_tr, Y_te, probes, run_dirs, covs = [], [], [], [], [], [], []
+    train_list = split["train"].tolist()
     for mb in members:
         rule = Rule(mb["rule"], n)
         rd = runs_dir / mb["name"]
@@ -166,6 +167,7 @@ def main(argv=None):
         group = info["inv_group"] if info["sym_kind"] == "invariant" else info["eq_group"]
         probes.append(SymmetryProbe(info["sym_kind"], group, x_te[i_probe], yte[i_probe],
                                     args.sym_sigmas, mb["seed"]))
+        covs.append(op_coverage(rule, train_list))
         rules.append(rule); infos.append(info); Y_tr.append(ytr); Y_te.append(yte); run_dirs.append(rd)
         cfg = {k: v for k, v in vars(args).items()}
         cfg.update(rule=mb["rule"], seed=mb["seed"], wd=mb["wd"], rule_spec=rule.spec, n=n, m=m,
@@ -241,7 +243,7 @@ def main(argv=None):
                     data=str(args.data), train_sets=meta["train_sets"], wd=mb["wd"],
                     sym_kind=info["sym_kind"], inv_size=info["inv_size"], eq_size=info["eq_size"],
                     dep_mean=info["dep_mean"], effective_depth=info["effective_depth"],
-                    nominal_depth=info["nominal_depth"], t_fit=t_fit, t_gen=t_gen, t_sym=st["t_sym"],
+                    nominal_depth=info["nominal_depth"], op_coverage=covs[i], t_fit=t_fit, t_gen=t_gen, t_sym=st["t_sym"],
                     delay=(t_gen - t_fit) if (t_fit is not None and t_gen is not None) else None,
                     ratio=(t_gen / t_fit) if (t_fit and t_gen is not None) else None,
                     censored=t_gen is None, last_step=step, stop_reason=st["stop_reason"],

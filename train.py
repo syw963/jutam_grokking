@@ -34,7 +34,7 @@ import torch.nn.functional as F
 from src.data import compute_targets, load_split
 from src.metrics import SymmetryProbe, evaluate, norms
 from src.model import KINDS, build_model
-from src.rules import PRESETS, Rule, analyze
+from src.rules import PRESETS, Rule, analyze, op_coverage
 
 CSV_FIELDS = ["step", "lr", "elapsed",
               "train_loss", "test_loss", "train_tok", "test_tok", "train_exact", "test_exact",
@@ -167,6 +167,7 @@ def main(argv=None):
         y = torch.as_tensor(ys.astype(np.int64) - 1, device=device)
         return x, y
 
+    coverage = op_coverage(rule, split["train"].tolist())
     tr_x, tr_y = tensors(split["train"])
     te_x, te_y = tensors(split["test"])
     g = torch.Generator().manual_seed(args.seed + 1)
@@ -230,7 +231,7 @@ def main(argv=None):
                     data=str(args.data), train_sets=meta["train_sets"], wd=args.wd,
                     sym_kind=info["sym_kind"], inv_size=info["inv_size"], eq_size=info["eq_size"],
                     dep_mean=info["dep_mean"], effective_depth=info["effective_depth"],
-                    nominal_depth=info["nominal_depth"],
+                    nominal_depth=info["nominal_depth"], op_coverage=coverage,
                     t_fit=t_fit, t_gen=t_gen, t_sym=state["t_sym"],
                     delay=(t_gen - t_fit) if (t_fit is not None and t_gen is not None) else None,
                     ratio=(t_gen / t_fit) if (t_fit and t_gen is not None) else None,

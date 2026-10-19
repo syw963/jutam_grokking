@@ -400,6 +400,38 @@ def _apply_ref(xs, step: Step, n: int):
     return [T(xs[i], xs[w[i]]) for i in range(m)]
 
 
+def ref_pairs(step: Step, xs, n: int):
+    """REF 단계에서 연산 T에 들어가는 (자기 값, 참조값) 쌍. 값은 1..n으로 맞춘다."""
+    m, mode = len(xs), step.mode
+    red = lambda v: (v - 1) % n + 1
+    if mode == "sortnext":
+        s = sorted(xs)
+        return [(s[i], s[(i + 1) % m]) for i in range(m)]
+    if mode == "sum":
+        t = red(sum(xs))
+        return [(x, t) for x in xs]
+    if mode == "first":
+        return [(x, xs[0]) for x in xs]
+    if mode == "next":
+        return [(xs[i], xs[(i + 1) % m]) for i in range(m)]
+    w = _wiring(mode, m, int(step.p("seed")))
+    return [(xs[i], xs[w[i]]) for i in range(m)]
+
+
+def op_coverage(rule: "Rule", train_x) -> float | None:
+    """REF 한 단계짜리 규칙에서, train이 연산 표 n×n 중 몇 칸을 보여주는지.
+
+    출력 한 칸 = T(자기 값, 참조값)이므로 train에 나온 서로 다른 (자기 값, 참조값) 쌍의 비율.
+    REF 한 단계가 아닌 규칙은 None.
+    """
+    if len(rule.steps) != 1 or rule.steps[0].code != "REF":
+        return None
+    seen = set()
+    for row in train_x:
+        seen.update(ref_pairs(rule.steps[0], list(row), rule.n))
+    return len(seen) / (rule.n * rule.n)
+
+
 # ---------------------------------------------------------------------------
 # 규칙 객체
 # ---------------------------------------------------------------------------
@@ -464,6 +496,20 @@ PRESETS: dict[str, str] = {
     "l1t_next": "REF:next(op=table)",
     "l1t_perm": "REF:perm(op=table,seed=0)",
     "l1t_map": "REF:map(op=table,seed=0)",
+    # 배선 대칭 비교군 (T = +). coverage는 모두 비슷하고(1,024개에서 85~87%) 등변군 크기만 다르다.
+    # 이름: w<등변군 크기>_<배선>. o5 = Z5 (5-순환), o6 = 2-순환+3-순환, o2·o1 = 겹침 있는 배선
+    "w5_next": "REF:next(op=add)",
+    "w5_p0": "REF:perm(op=add,seed=0)",   # (1,4,3,0,2): 5-순환, 순환 이웃을 위치만 바꾼 것
+    "w5_p2": "REF:perm(op=add,seed=2)",   # (1,3,0,4,2)
+    "w6_p1": "REF:perm(op=add,seed=1)",   # (3,4,1,0,2)
+    "w6_p4": "REF:perm(op=add,seed=4)",   # (2,4,3,0,1)
+    "w6_p6": "REF:perm(op=add,seed=6)",   # (3,2,1,4,0)
+    "w2_m4": "REF:map(op=add,seed=4)",    # (4,3,3,0,0)
+    "w2_m12": "REF:map(op=add,seed=12)",  # (3,3,4,0,2)
+    "w2_m15": "REF:map(op=add,seed=15)",  # (4,4,3,2,0)
+    "w1_m0": "REF:map(op=add,seed=0)",    # (1,4,0,4,3)
+    "w1_m2": "REF:map(op=add,seed=2)",    # (4,0,0,1,0)
+    "w1_m8": "REF:map(op=add,seed=8)",    # (1,3,3,1,0)
     # RQ2 본 실험 사슬
     "c_sum_sort_nb": "S:sum > A:asc > AF:sum",
     "c_sort_nb_sort": "A:asc > AF:sum > A:asc",
