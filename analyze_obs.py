@@ -35,7 +35,7 @@ def from_runs(dirs):
         try:
             s = json.loads((d / "summary.json").read_text())
             c = json.loads((d / "config.json").read_text())
-        except FileNotFoundError:
+        except (FileNotFoundError, NotADirectoryError):
             continue
         if not s.get("stop_reason") and s.get("t_gen") is None and s.get("last_step", 0) < c.get("steps", 0):
             continue  # 아직 진행 중
