@@ -24,8 +24,8 @@ tri(ax, 2.55, 3.4, 12, 0.135)
 for cx, a, b in [(1.1, "숫자 1~23", "칸 276개"), (3.36, "숫자 1~101", "칸 5,151개")]:
     ax.text(cx, 1.2, a, ha="center", fontsize=19, color=INK, weight="bold")
     ax.text(cx, 0.7, b, ha="center", fontsize=18, color=BLUE, weight="bold")
-    ax.text(cx, 0.1, "필요한 예제 수 ?", ha="center", fontsize=16, color=NAVY, weight="bold")
-steps = [("① 식 세우기", "칸 수 → 예제 수"), ("② 미리 예측", "실험 전에 기록"), ("③ 실험으로 확인", "예측과 비교")]
+    ax.text(cx, 0.1, "필요한 데이터 수 ?", ha="center", fontsize=16, color=NAVY, weight="bold")
+steps = [("① 식 세우기", "칸 수 → 데이터 수"), ("② 미리 예측", "실험 전에 기록"), ("③ 실험으로 확인", "예측과 비교")]
 for k, (t, s) in enumerate(steps):
     y = 3.65 - k * 1.3
     box(ax, 5.15, y - 1.0, 2.8, 1.0, LORG if k == 1 else LG)
@@ -38,7 +38,7 @@ fig.savefig(OUT + "rq1_large.svg", bbox_inches="tight")
 
 # ---------- RQ2 ----------
 fig, ax = plt.subplots(figsize=(8, 4)); ax.set_xlim(0, 8); ax.set_ylim(-0.2, 4); ax.axis("off")
-ax.text(0.1, 3.75, "예제 하나", fontsize=15, color=GRAY)
+ax.text(0.1, 3.75, "학습 데이터 하나", fontsize=15, color=GRAY)
 bx = 0.72
 for i, v in enumerate([3, 17, 8, 42, 25]):
     box(ax, 0.1 + i * bx, 2.75, 0.62, 0.62, LG)
@@ -58,7 +58,7 @@ for i in range(k):
             ax.text(x0 + j * s + s / 2, y0 - (i + 0.5) * s, str(c), ha="center", va="center", fontsize=14,
                     color="white" if c >= 3 else NAVY, weight="bold")
 box(ax, 0.1, -0.15, 7.85, 0.65, LORG)
-ax.text(4.0, 0.17, "칸당 관찰 수 = 예제 수 × 예제당 칸 수 ÷ 표 칸 수", ha="center", va="center",
+ax.text(4.0, 0.17, "칸당 관찰 수 = 데이터 수 × 데이터당 칸 수 ÷ 표 칸 수", ha="center", va="center",
         fontsize=17, color=ORG, weight="bold")
 fig.savefig(OUT + "rq2_large.png", dpi=300, bbox_inches="tight", facecolor="white")
 fig.savefig(OUT + "rq2_large.svg", bbox_inches="tight")
