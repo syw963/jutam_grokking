@@ -24,7 +24,7 @@ tri(ax, 2.55, 3.4, 12, 0.135)
 for cx, a, b in [(1.1, "숫자 1~23", "칸 276개"), (3.36, "숫자 1~101", "칸 5,151개")]:
     ax.text(cx, 1.2, a, ha="center", fontsize=19, color=INK, weight="bold")
     ax.text(cx, 0.7, b, ha="center", fontsize=18, color=BLUE, weight="bold")
-    ax.text(cx, 0.1, "필요한 데이터 수 ?", ha="center", fontsize=16, color=NAVY, weight="bold")
+    ax.text(cx, 0.1, "필요한 데이터 수 ?", ha="center", fontsize=14, color=NAVY, weight="bold")
 steps = [("① 식 세우기", "칸 수 → 데이터 수"), ("② 미리 예측", "실험 전에 기록"), ("③ 실험으로 확인", "예측과 비교")]
 for k, (t, s) in enumerate(steps):
     y = 3.65 - k * 1.3
