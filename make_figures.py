@@ -200,19 +200,65 @@ def fig5(internal_csv, out, example="w6_p1_m0_c1024_wd1_s1"):
     fig.savefig(out / "F5_stages.png"); plt.close(fig)
 
 
+
+def fig6(e16_roots, e12_roots, e6_root, out):
+    """수열 길이 m: 같은 규칙(이웃 덧셈)을 m=2·3·5로. 관찰 수 기준과 예제 수 기준."""
+    df = load_runs(list(e16_roots) + list(e12_roots) + [e6_root])
+    df = df[df.rule.isin(["p_next", "w5_next"])].copy()
+    ms = {}
+    for r in list(e16_roots) + list(e12_roots) + [e6_root]:
+        for d in glob.glob(f"{r}/*/config.json"):
+            c = json.loads(Path(d).read_text())
+            ms[Path(d).parent.name] = c["m"]
+    df["m"] = df.run.map(ms)
+    df["pairs"] = np.where(df.m == 2, 1, df.m)
+    df["obs"] = df.train * df.pairs / 1275
+    t = agg(df, ["m", "train"]).merge(df[["m", "train", "obs"]].drop_duplicates(), on=["m", "train"])
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
+    for i, m in enumerate([2, 3, 5]):
+        s = t[t.m == m].sort_values("train")
+        lab = f"m={m}" + (" (두 수 → 합, 기존 grokking 과제)" if m == 2 else "")
+        ax[0].plot(s.obs, s.rate, "o-", color=C[i], label=lab)
+        ax[1].plot(s.train, s.rate, "o-", color=C[i], label=lab)
+    ax[0].set_xlabel("칸당 평균 관찰 수"); ax[1].set_xlabel("train 예제 수")
+    ax[0].set_ylabel("일반화한 run 비율")
+    ax[0].set_title("관찰 수 기준: 문턱이 m마다 다르다"); ax[1].set_title("예제 수 기준: 약 600~1,000개 사이로 모인다")
+    ax[0].legend(fontsize=8)
+    fig.savefig(out / "F6_seq_length.png"); plt.close(fig)
+
+
+def fig7(e17_internal_csv, out, N=1100, seed=1):
+    """무작위 연산표 vs a+3b: train에 나온 칸 / 안 나온 칸 정확도."""
+    d = pd.read_csv(e17_internal_csv)
+    fig, ax = plt.subplots(1, 2, figsize=(11, 4), sharey=True)
+    for a, kind, title in ((ax[0], "table", "규칙 없는 무작위 표"), (ax[1], "n3", "a+3b (같은 2,500칸)")):
+        r = d[(d.train == N) & (d.seed == seed) & (d.rule.str.contains("table") == (kind == "table"))].sort_values("step")
+        r = r[r.step >= 50]
+        a.plot(r.step, r.train_exact, "-", color=C[3], label="train 완전 일치")
+        a.plot(r.step, r.acc_seen, "-", color=C[0], label="test · train에 나온 칸")
+        a.plot(r.step, r.acc_unseen, "-", color=C[1], label="test · train에 안 나온 칸")
+        a.set_xscale("log"); a.set_xlabel("step (로그)"); a.set_title(f"{title}, train {N:,}개")
+    ax[0].set_ylabel("정확도"); ax[0].legend(fontsize=8, loc="center right")
+    fig.savefig(out / "F7_random_table.png"); plt.close(fig)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--e6"); ap.add_argument("--e7"); ap.add_argument("--e8"); ap.add_argument("--e8-data")
     ap.add_argument("--e12", nargs="+"); ap.add_argument("--e12b", nargs="+"); ap.add_argument("--e12b-data")
     ap.add_argument("--e11d"); ap.add_argument("--out", default="docs/figures")
+    ap.add_argument("--e16", nargs="+"); ap.add_argument("--e17-internal")
+    ap.add_argument("--only", nargs="+", help="그릴 그림 번호만 (예: 6 7)")
     a = ap.parse_args()
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     setup_style()
-    fig1(a.e6, out)
-    fig2(a.e6, a.e7, out)
-    fig3(a.e6, a.e7, a.e12, out)
-    fig4(a.e8, a.e8_data, a.e12b, a.e12b_data, out)
-    fig5(a.e11d, out)
+    want = set(a.only or "1234567")
+    if "1" in want: fig1(a.e6, out)
+    if "2" in want: fig2(a.e6, a.e7, out)
+    if "3" in want: fig3(a.e6, a.e7, a.e12, out)
+    if "4" in want: fig4(a.e8, a.e8_data, a.e12b, a.e12b_data, out)
+    if "5" in want: fig5(a.e11d, out)
+    if "6" in want: fig6(a.e16, a.e12, a.e6, out)
+    if "7" in want: fig7(a.e17_internal, out)
     print("저장:", sorted(p.name for p in out.glob("*.png")))
 
 
