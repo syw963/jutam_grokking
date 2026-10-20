@@ -259,15 +259,17 @@ def fig8(out, extra=None):
         sel = [b for b in BOUNDARIES if b[0] == op]
         ax.plot([b[2] for b in sel], [b[3] for b in sel], "o", color=C_[i], label=f"{op} (n = " + ", ".join(str(b[1]) for b in sel) + ")")
     for lab, pts in (extra or {}).get("series", {}).items():
-        ax.plot([p[0] for p in pts], [p[1] for p in pts], "s", color=C_[2], label=lab)
+        ax.errorbar([p[0] for p in pts], [p[1] for p in pts],
+                    yerr=[[p[1] - p[2] for p in pts], [p[3] - p[1] for p in pts]], fmt="s", color=C_[2], capsize=3, label=lab)
+        ax.plot(xs, 2 * 10 ** a * xs ** k, ":", color=C_[2], lw=1.2, label="법칙 × 2 (합성 비용)")
     ax.set_xscale("log"); ax.set_yscale("log")
     from matplotlib.ticker import FixedLocator, NullFormatter, NullLocator
-    ax.xaxis.set_major_locator(FixedLocator([300, 1000, 3000, 10000])); ax.xaxis.set_minor_formatter(NullFormatter())
-    ax.set_xticklabels(["300", "1,000", "3,000", "10,000"])
-    ax.yaxis.set_major_locator(FixedLocator([200, 500, 1000, 2000])); ax.yaxis.set_minor_formatter(NullFormatter())
-    ax.set_yticklabels(["200", "500", "1,000", "2,000"])
+    ax.xaxis.set_major_locator(FixedLocator([300, 1000, 3000])); ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xticklabels(["300", "1,000", "3,000"])
+    ax.yaxis.set_major_locator(FixedLocator([200, 500, 1000, 2000, 5000])); ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.set_yticklabels(["200", "500", "1,000", "2,000", "5,000"])
     ax.set_xlabel("배워야 할 연산 표의 칸 수 C"); ax.set_ylabel("일반화 50% 경계 train 예제 수")
-    ax.set_title("필요한 예제 수는 표 크기의 약 0.76제곱")
+    ax.set_title("필요한 예제 수는 표 크기의 약 0.76제곱, 합성 규칙은 약 2배")
     ax.legend(fontsize=7.5)
     fig.savefig(out / "F8_examples_law.png"); plt.close(fig)
 
@@ -289,7 +291,10 @@ def main():
     if "5" in want: fig5(a.e11d, out)
     if "6" in want: fig6(a.e16, a.e12, a.e6, out)
     if "7" in want: fig7(a.e17_internal, out)
-    if "8" in want: fig8(out)
+    if "8" in want:
+        # 덧셈 두 번(E26 실패 / E29 성공 사이, 기하평균과 구간). C = n × n(n+1)/2
+        comp = [(3610, (2400 * 3600) ** 0.5, 2400, 3600), (6348, (4000 * 6000) ** 0.5, 4000, 6000)]
+        fig8(out, dict(series={"덧셈 두 번 (합성, n = 19, 23)": comp}, xmax=8000))
     print("저장:", sorted(p.name for p in out.glob("*.png")))
 
 
