@@ -25,7 +25,7 @@ from analyze_obs import PRED_A, PRED_B, from_runs
 from src.rules import Rule, analyze
 
 # 참조 팔레트 (dataviz 기본, 라이트): 순서 고정
-C = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
+C_ = C = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
 INK, INK2, GRID, SURF = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 
 
@@ -241,6 +241,36 @@ def fig7(e17_internal_csv, out, N=1100, seed=1):
     ax[0].set_ylabel("정확도"); ax[0].legend(fontsize=8, loc="center right")
     fig.savefig(out / "F7_random_table.png"); plt.close(fig)
 
+
+# 일반화 50% 경계(보간)와 표 칸 수 C. 출처 실험의 일반화 비율 표에서 선형 보간 (docs/결과_정리.md 표와 같음)
+BOUNDARIES = [("a+b", 23, 276, 211, "E24"), ("a+b", 31, 496, 329, "E13"), ("a+b", 50, 1275, 625, "E12"),
+              ("a+b", 61, 1891, 882, "E21"), ("a+b", 71, 2556, 1183, "E13"), ("a+b", 101, 5151, 2067, "E24"),
+              ("a+3b", 31, 961, 534, "E13"), ("a+3b", 41, 1681, 829, "E21"), ("a+3b", 50, 2500, 995, "E7")]
+
+
+def fig8(out, extra=None):
+    """필요한 예제 수 법칙: 50% 경계 N0 vs 연산 표 칸 수 C (로그-로그)."""
+    fig, ax = plt.subplots(figsize=(6.8, 4.4))
+    C = np.array([b[2] for b in BOUNDARIES]); N = np.array([b[3] for b in BOUNDARIES])
+    k, a = np.polyfit(np.log10(C), np.log10(N), 1)
+    xs = np.logspace(np.log10(C.min() * 0.8), np.log10((extra or {}).get("xmax", C.max() * 1.3)), 50)
+    ax.plot(xs, 10 ** a * xs ** k, "--", color=INK2, lw=1.2, label=f"N0 = {10**a:.2f} × C^{k:.2f}")
+    for i, op in enumerate(("a+b", "a+3b")):
+        sel = [b for b in BOUNDARIES if b[0] == op]
+        ax.plot([b[2] for b in sel], [b[3] for b in sel], "o", color=C_[i], label=f"{op} (n = " + ", ".join(str(b[1]) for b in sel) + ")")
+    for lab, pts in (extra or {}).get("series", {}).items():
+        ax.plot([p[0] for p in pts], [p[1] for p in pts], "s", color=C_[2], label=lab)
+    ax.set_xscale("log"); ax.set_yscale("log")
+    from matplotlib.ticker import FixedLocator, NullFormatter, NullLocator
+    ax.xaxis.set_major_locator(FixedLocator([300, 1000, 3000, 10000])); ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xticklabels(["300", "1,000", "3,000", "10,000"])
+    ax.yaxis.set_major_locator(FixedLocator([200, 500, 1000, 2000])); ax.yaxis.set_minor_formatter(NullFormatter())
+    ax.set_yticklabels(["200", "500", "1,000", "2,000"])
+    ax.set_xlabel("배워야 할 연산 표의 칸 수 C"); ax.set_ylabel("일반화 50% 경계 train 예제 수")
+    ax.set_title("필요한 예제 수는 표 크기의 약 0.76제곱")
+    ax.legend(fontsize=7.5)
+    fig.savefig(out / "F8_examples_law.png"); plt.close(fig)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--e6"); ap.add_argument("--e7"); ap.add_argument("--e8"); ap.add_argument("--e8-data")
@@ -251,7 +281,7 @@ def main():
     a = ap.parse_args()
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     setup_style()
-    want = set(a.only or "1234567")
+    want = set(a.only or "12345678")
     if "1" in want: fig1(a.e6, out)
     if "2" in want: fig2(a.e6, a.e7, out)
     if "3" in want: fig3(a.e6, a.e7, a.e12, out)
@@ -259,6 +289,7 @@ def main():
     if "5" in want: fig5(a.e11d, out)
     if "6" in want: fig6(a.e16, a.e12, a.e6, out)
     if "7" in want: fig7(a.e17_internal, out)
+    if "8" in want: fig8(out)
     print("저장:", sorted(p.name for p in out.glob("*.png")))
 
 
