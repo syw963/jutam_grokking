@@ -8,3 +8,4 @@ runs/
 .DS_Store
 results*.csv
 *.png
+!docs/figures/*.png
