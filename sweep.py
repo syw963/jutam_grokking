@@ -213,12 +213,19 @@ def main():
         t0 = time.time()
         with log.open("a") as f:
             if gpus:
-                # 같은 서버의 모든 sweep을 통틀어 지금 가장 한가한 GPU에 배정
-                with GpuLoad() as load:
-                    gpu = load.pick(gpus)
-                    env["CUDA_VISIBLE_DEVICES"] = gpu
-                    proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent, env=env)
-                    load.add(gpu, proc.pid)
+                # 같은 서버의 모든 sweep을 통틀어 지금 가장 한가한 GPU에 배정.
+                # 환경변수 JUTAM_MAX_PER_GPU=k면 GPU당 동시 학습을 서버 전체에서 k개로 제한(자리가 날 때까지 기다림).
+                cap = int(os.environ.get("JUTAM_MAX_PER_GPU", "0") or 0)
+                while True:
+                    with GpuLoad() as load:
+                        gpu = load.pick(gpus)
+                        if cap <= 0 or len(load.d.get(gpu, [])) < cap:
+                            env["CUDA_VISIBLE_DEVICES"] = gpu
+                            proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT,
+                                                    cwd=Path(__file__).parent, env=env)
+                            load.add(gpu, proc.pid)
+                            break
+                    time.sleep(15)
             else:
                 gpu = None
                 proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, cwd=Path(__file__).parent, env=env)
