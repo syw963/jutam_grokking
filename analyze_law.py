@@ -33,7 +33,10 @@ def load(patterns):
                 if "add3" in c["rule_spec"]:
                     op = "a+3b"
                 C = n * (n + 1) / 2 if op == "a+b" else n * n
-                rows.append(dict(n=n, op=op, model=c.get("model", "m0"), C=C, N=c["data_meta"]["train_sets"],
+                mdl = c.get("model", "m0")
+                if c.get("d", 128) != 128 or c.get("layers", 2) != 2:
+                    mdl += f"-d{c['d']}L{c['layers']}"
+                rows.append(dict(n=n, op=op, model=mdl, C=C, N=c["data_meta"]["train_sets"],
                                  g=s.get("t_gen") is not None, seed=c["seed"]))
     return rows
 
