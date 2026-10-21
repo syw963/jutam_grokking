@@ -37,6 +37,7 @@ from torch.func import functional_call, stack_module_state, vmap
 from src.data import compute_targets, load_split
 from src.metrics import SymmetryProbe
 from src.model import KINDS, build_model
+from src.noise import make_noise, test_cells
 from src.rules import Rule, analyze, op_coverage
 from train import CSV_FIELDS, log_grid, make_autocast, pick_device, rule_name
 
@@ -86,6 +87,11 @@ def parse_args(argv=None):
     ap.add_argument("--batch-size", type=int, default=-1, help="-1: full batch, 양수: run별 복원추출")
     ap.add_argument("--train-mask", type=int, default=0,
                     help="k>0: train 예제마다 출력 칸 k개만 loss에 넣는다(고정, 예제별 무작위). train 정확도도 그 칸만 잰다")
+    ap.add_argument("--noise-frac", type=float, default=0.0,
+                    help="E30: train에 섞을 오답 토큰 수 = round(frac × train 예제 수). 0이면 오답 없음")
+    ap.add_argument("--noise-mode", choices=["scatter", "cell"], default="scatter",
+                    help="scatter: 예제마다 한 칸, cell: 표 칸 단위로 일관된 오답 (src/noise.py)")
+    ap.add_argument("--noise-seed", type=int, default=777)
     ap.add_argument("--steps", type=int, default=100000)
     ap.add_argument("--eval-every", type=int, default=100)
     ap.add_argument("--n-eval", type=int, default=4096)
@@ -160,6 +166,7 @@ def main(argv=None):
     i_probe = pick(len(x_te), args.sym_probe)
 
     rules, infos, Y_tr, Y_te, probes, run_dirs, covs = [], [], [], [], [], [], []
+    noises = []  # run별 오답 정보 (E30)
     train_list = split["train"].tolist()
     for mb in members:
         rule = Rule(mb["rule"], n)
@@ -173,7 +180,18 @@ def main(argv=None):
         ip = rd / "rule_info.json"
         info = json.loads(ip.read_text()) if ip.exists() else analyze(rule.spec, n, m)
         ip.write_text(json.dumps(info, ensure_ascii=False))
-        ytr = torch.as_tensor(compute_targets(rule, split["train"]).astype(np.int64) - 1, device=device)
+        ytr_np = compute_targets(rule, split["train"]).astype(np.int64) - 1
+        if args.noise_frac > 0:
+            nz = make_noise(rule, split["train"], ytr_np, args.noise_frac, args.noise_mode, args.noise_seed)
+            te_mask, te_wrong = test_cells(rule, split["test"], nz["cell_wrong"])
+            noises.append(dict(y_true=torch.as_tensor(ytr_np, device=device),
+                               mask=torch.as_tensor(nz["mask"], device=device),
+                               te_mask=torch.as_tensor(te_mask, device=device),
+                               te_wrong=torch.as_tensor(te_wrong, device=device)))
+            (rd / "noise.json").write_text(json.dumps(dict(nz["info"], test_tokens=int(te_mask.sum()),
+                                                           test_rows=int(te_mask.any(1).sum())), ensure_ascii=False))
+            ytr_np = nz["y_noisy"]
+        ytr = torch.as_tensor(ytr_np, device=device)
         yte = torch.as_tensor(compute_targets(rule, split["test"]).astype(np.int64) - 1, device=device)
         group = info["inv_group"] if info["sym_kind"] == "invariant" else info["eq_group"]
         probes.append(SymmetryProbe(info["sym_kind"], group, x_te[i_probe], yte[i_probe],
@@ -288,7 +306,86 @@ def main(argv=None):
 
     nan_sym = dict(viol_tok=math.nan, viol_seq=math.nan, viol_tv=math.nan)
 
+    # ---- E30 오답 지표 -------------------------------------------------------
+    NOISE_FIELDS = ["step", "mem", "fixed", "other", "true_rank2", "true_rank_med", "true_prob",
+                    "clean_rows_exact", "test_cell_tokens", "test_spread", "test_true_on_cells", "test_clean_rows_exact"]
+    if noises:
+        # 오답 자리는 run마다 같다 (같은 규칙·같은 noise seed). 첫 run 기준으로 행 목록을 정한다.
+        nz0 = noises[0]
+        nrows = nz0["mask"].any(1).nonzero().squeeze(1)
+        gq = torch.Generator().manual_seed(4321)
+        crow = (~nz0["mask"].any(1)).nonzero().squeeze(1).cpu()
+        crow = crow[torch.randperm(len(crow), generator=gq)[:2048]].to(device)
+        trow = nz0["te_mask"].any(1).nonzero().squeeze(1).cpu()
+        trow = trow[torch.randperm(len(trow), generator=gq)[:4096]].to(device)
+        tcrow = (~nz0["te_mask"].any(1)).nonzero().squeeze(1).cpu()
+        tcrow = tcrow[torch.randperm(len(tcrow), generator=gq)[:4096]].to(device)
+        for i in range(K):
+            if not (noises[i]["mask"] == nz0["mask"]).all():
+                sys.exit("묶음 안 run들의 오답 자리가 다릅니다 (규칙이 다르면 묶지 마세요)")
+            if not resume:
+                with (run_dirs[i] / "noise.csv").open("w", newline="") as f:
+                    csv.DictWriter(f, NOISE_FIELDS).writeheader()
+
+    @torch.no_grad()
+    def predict_rows(x, Y, rows, want_logits=False):
+        A = len(active)
+        chunk = max(64, args.rows_budget // A)
+        prs, lgs = [], []
+        for s in range(0, len(rows), chunk):
+            r = rows[s:s + chunk]
+            with autocast():
+                prs.append(vmap(f_pred, in_dims=(0, None))(params, x[r]))
+                if want_logits:
+                    lgs.append(vmap(f_logits, in_dims=(0, None, 0))(params, x[r], Y[active][:, r]).float())
+        pr = torch.cat(prs, 1)
+        return (pr, torch.cat(lgs, 1)) if want_logits else pr
+
+    @torch.no_grad()
+    def noise_eval():
+        nz = noises[0]
+        msk = nz["mask"][nrows]                       # (R, m)
+        y_true = nz["y_true"][nrows]                  # (R, m)
+        pr, lg = predict_rows(x_tr, Y_tr, nrows, want_logits=True)   # (A, R, m), (A, R, m, n)
+        y_wrong = Y_tr[active][:, nrows]              # 오답 라벨 (A, R, m)
+        sel = msk.unsqueeze(0).expand_as(pr)
+        tot = msk.sum().clamp(min=1)
+        mem = ((pr == y_wrong) & sel).sum((1, 2)) / tot
+        fixed = ((pr == y_true) & sel).sum((1, 2)) / tot
+        lt = lg.gather(-1, y_true.unsqueeze(0).expand_as(pr).unsqueeze(-1))     # 정답 logit
+        rank = (lg > lt).sum(-1) + 1                  # 1 = 1순위
+        prob = torch.softmax(lg, -1).gather(-1, y_true.unsqueeze(0).expand_as(pr).unsqueeze(-1)).squeeze(-1)
+        r2 = ((rank == 2) & sel).sum((1, 2)) / tot
+        pmean = (prob * sel).sum((1, 2)) / tot
+        rmed = [rank[a][msk].float().median().item() for a in range(len(active))]
+        # 오답 없는 train 행
+        pc = predict_rows(x_tr, Y_tr, crow)
+        clean_ex = (pc == nz["y_true"][crow]).all(-1).float().mean(1)
+        # test: 오답 칸이 나오는 자리
+        if len(trow):
+            pt = predict_rows(x_te, Y_te, trow)
+            tm, tw = nz["te_mask"][trow], nz["te_wrong"][trow]
+            tt = tm.sum().clamp(min=1)
+            spread = ((pt == tw) & tm).sum((1, 2)) / tt
+            ttrue = ((pt == Y_te[active][:, trow]) & tm).sum((1, 2)) / tt
+            ntok = int(nz["te_mask"].sum())
+        else:
+            spread = ttrue = torch.full((len(active),), math.nan, device=device); ntok = 0
+        ptc = predict_rows(x_te, Y_te, tcrow)
+        tclean = (ptc == Y_te[active][:, tcrow]).all(-1).float().mean(1)
+        vals = dict(mem=mem, fixed=fixed, true_rank2=r2, true_prob=pmean, clean_rows_exact=clean_ex,
+                    test_spread=spread, test_true_on_cells=ttrue, test_clean_rows_exact=tclean)
+        vals = {k: v.tolist() for k, v in vals.items()}
+        for slot, i in enumerate(active):
+            row = {k: vals[k][slot] for k in vals}
+            row.update(step=step, other=1 - row["mem"] - row["fixed"], true_rank_med=rmed[slot], test_cell_tokens=ntok)
+            with (run_dirs[i] / "noise.csv").open("a", newline="") as f:
+                csv.DictWriter(f, NOISE_FIELDS).writerow(
+                    {k: (f"{v:.5g}" if isinstance(v, float) else v) for k, v in row.items()})
+
     def do_eval():
+        if noises:
+            noise_eval()
         a, b = eval_split(x_tr, Y_tr, i_tr, mask_tr), eval_split(x_te, Y_te, i_te)
         a = {k: v.tolist() for k, v in a.items()}  # GPU→CPU 한 번에
         b = {k: v.tolist() for k, v in b.items()}
