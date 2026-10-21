@@ -45,7 +45,7 @@ def from_runs(dirs):
         if g.get("edges_unordered") is None:
             continue
         op = rule.steps[0].p("op")
-        comm = op == "add"
+        comm = op in ("add", "mul")
         pairs = g["edges_unordered"] if comm else g["edges_ordered"]
         k = c.get("train_mask", 0) or 0
         if k:  # 출력 칸 k개만 학습: 5쌍 규칙(w5 계열)에서는 예제당 서로 다른 쌍도 k개
@@ -54,7 +54,7 @@ def from_runs(dirs):
         N = c["data_meta"]["train_sets"]
         variant = f"d{c['d']}L{c['layers']}" + (f" wd{c['wd']:g}" if c["wd"] != 1.0 else "") + (f" k{k}" if k else "")
         tf, tg = s.get("t_fit"), s.get("t_gen")
-        rows.append(dict(n=n, op="a+b" if comm else "a+3b", pairs=pairs, connected=g.get("connected"),
+        rows.append(dict(n=n, op={"add": "a+b", "mul": "a*b"}.get(op, "a+3b"), pairs=pairs, connected=g.get("connected"),
                          variant=variant, rule=c["rule"], train=N, obs_per_cell=N * pairs / cells,
                          grokked=tg is not None, delay=(tg - tf) if tg is not None and tf is not None else np.nan))
     r = pd.DataFrame(rows)

@@ -375,15 +375,20 @@ def apply_step(xs: list[int], step: Step, n: int, r):
     return ys, r
 
 
+COMMUTATIVE_OPS = ("add", "mul")  # T(a,b) = T(b,a): 연산 표 칸을 무순서 쌍으로 센다
+
+
 def _apply_ref(xs, step: Step, n: int):
     """1층 규칙: y_i = T(x_i, 참조값_i)."""
     m, mode = len(xs), step.mode
     op = step.p("op")
-    if op not in ("add", "add3", "table"):
-        raise RuleError("REF의 op는 add, add3, table 중 하나")
+    if op not in ("add", "add3", "mul", "table"):
+        raise RuleError("REF의 op는 add, add3, mul, table 중 하나")
     if op == "table":
         tab = _op_table(n, int(step.p("tseed")))
         T = lambda a, b: tab[(a - 1) % n][(b - 1) % n]
+    elif op == "mul":  # T(a,b) = a × b (교환). 출력은 다른 연산과 같이 (값 mod n) + 1
+        T = lambda a, b: a * b
     elif op == "add3":  # T(a,b) = a + 3b: 교환법칙이 없는 덧셈 (3과 50은 서로소라 b에 대해 일대일)
         T = lambda a, b: a + 3 * b
     else:
@@ -459,7 +464,7 @@ def op_coverage(rule: "Rule", train_x) -> float | None:
     if len(rule.steps) != 1 or rule.steps[0].code != "REF":
         return None
     st = rule.steps[0]
-    commutative = st.p("op") == "add"
+    commutative = st.p("op") in COMMUTATIVE_OPS
     seen = set()
     for row in train_x:
         for a, b in ref_pairs(st, list(row), rule.n):
@@ -548,6 +553,7 @@ PRESETS: dict[str, str] = {
     "w1_m8": "REF:map(op=add,seed=8)",    # (1,3,3,1,0)
     # 같은 배선, 연산만 T(a,b) = a + 3b (교환법칙 없음). 이름 끝 _n3
     "w5_next_n3": "REF:next(op=add3)",
+    "w5_next_mul": "REF:next(op=mul)",    # E33: 이웃 곱셈 (x_i × x_{i+1}) mod n + 1
     "w5_p2_n3": "REF:perm(op=add3,seed=2)",
     "w6_p1_n3": "REF:perm(op=add3,seed=1)",
     "w6_p4_n3": "REF:perm(op=add3,seed=4)",

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from src.rules import Rule, ref_pairs
+from src.rules import COMMUTATIVE_OPS, Rule, ref_pairs
 
 
 def cell_keys(rule: Rule, xs: np.ndarray) -> np.ndarray:
@@ -22,7 +22,7 @@ def cell_keys(rule: Rule, xs: np.ndarray) -> np.ndarray:
     if len(rule.steps) != 1 or rule.steps[0].code != "REF":
         raise ValueError(f"오답 섞기는 단일 REF 규칙만 지원합니다: {rule.spec}")
     st, n = rule.steps[0], rule.n
-    comm = st.p("op") == "add"
+    comm = st.p("op") in COMMUTATIVE_OPS
     out = np.empty(xs.shape, dtype=np.int64)
     for r, row in enumerate(xs.tolist()):
         for i, (a, b) in enumerate(ref_pairs(st, row, n)):

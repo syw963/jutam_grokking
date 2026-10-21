@@ -29,10 +29,9 @@ def load(patterns):
                 if not s.get("stop_reason"):
                     continue
                 n = c["n"]
-                op = "a+b" if "op=add)" in c["rule_spec"] or c["rule_spec"].endswith("(op=add)") else "other"
-                if "add3" in c["rule_spec"]:
-                    op = "a+3b"
-                C = n * (n + 1) / 2 if op == "a+b" else n * n
+                spec = c["rule_spec"]
+                op = "a*b" if "op=mul" in spec else "a+3b" if "op=add3" in spec else "a+b" if "op=add" in spec else "other"
+                C = n * (n + 1) / 2 if op in ("a+b", "a*b") else n * n
                 mdl = c.get("model", "m0")
                 if c.get("d", 128) != 128 or c.get("layers", 2) != 2:
                     mdl += f"-d{c['d']}L{c['layers']}"
