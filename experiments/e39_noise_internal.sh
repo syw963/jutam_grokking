@@ -13,6 +13,7 @@
 #   P4 (cell) 같은 칸 오답은 상위 뉴런을 꺼도 scatter보다 덜 사라지고, 끄면 test 번짐도 함께 줄어든다.
 #   P5 (N 768, 오답 먼저 외움) 오답 담당 뉴런과 규칙 담당 뉴런의 상위 32개 겹침이 N 2,048보다 크다(같은 데서 같이 외움).
 # 실행: JUTAM_MAX_PER_GPU=8 GPUS=all JOBS=4 bash experiments/e39_noise_internal.sh
+#   GPU 5장 이상이면 GROUP=16 (폴더당 묶음 1개 → 묶음 5개가 GPU 하나씩)
 #   (5090 2장 기준 학습 약 1시간 + 분석 약 30~60분. 체크포인트 약 8GB → 디스크 30GB 이상)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -27,7 +28,7 @@ run() {  # run <N> <방식> <wd 목록> [오답 인자...]
   local N=$1 mode=$2 wds=$3; shift 3
   local out=runs_e39_c${N}_$mode
   python sweep.py --data data/c$N --rules w5_next --models m0 --seeds 0 1 2 3 --wds $wds \
-    --runs-dir $out --multi --group-size 4 --jobs $JOBS $EXTRA -- --lr 3e-4 --steps $STEPS --eval-every 500 --sym-every 0 \
+    --runs-dir $out --multi --group-size ${GROUP:-4} --jobs $JOBS $EXTRA -- --lr 3e-4 --steps $STEPS --eval-every 500 --sym-every 0 \
     $CK "$@" > $out.sweep.log 2>&1
 }
 run 2048 scatter "1.0 3.0 5.0 10.0" --noise-frac 0.1 --noise-mode scatter &
