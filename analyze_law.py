@@ -35,6 +35,8 @@ def load(patterns):
                 mdl = c.get("model", "m0")
                 if c.get("d", 128) != 128 or c.get("layers", 2) != 2:
                     mdl += f"-d{c['d']}L{c['layers']}"
+                if float(c.get("wd", 1.0)) != 1.0:
+                    mdl += f"-wd{float(c['wd']):g}"
                 rows.append(dict(n=n, op=op, model=mdl, C=C, N=c["data_meta"]["train_sets"],
                                  g=s.get("t_gen") is not None, seed=c["seed"]))
     return rows
