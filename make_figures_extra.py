@@ -86,11 +86,41 @@ def f10(out):
     plt.close(fig)
 
 
+def f11(out):
+    """E39: 흩어진 오답은 2층 attention(문맥)을 거쳐 외워지고, 같은 칸 오답은 표처럼 저장된다. 값은 docs/실험_기록.md E39."""
+    WR, WR2, OK = C[1], "#f4b79c", C[2]   # 외운 오답(진한/연한 주황), 원래 정답·처음 보는 문제(초록)
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.6))
+    labels = ["흩어진 오답\n(예제마다 한 칸)", "같은 칸 오답\n(칸마다 일관)", "오답 없음\n(대조군)"]
+    x = np.arange(3)
+    ax = axes[0]
+    mem_on, mem_off, test_off = [0.88, 1.00], [0.00, 1.00], [1.00, 1.00, 1.00]
+    ax.bar(x[:2] - 0.27, mem_on, 0.26, color=WR2, label="외운 오답: 그대로")
+    ax.bar(x[:2], mem_off, 0.26, color=WR, label="외운 오답: 2층 attention 끔")
+    ax.bar(x + 0.27, test_off, 0.26, color=OK, label="처음 보는 문제 정답률: 2층 attention 끔")
+    ax.text(x[0], 0.03, "0", ha="center", fontsize=10, color=WR, fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=9); ax.set_ylim(0, 1.05)
+    ax.set_title("(가) 2층 attention을 끄면", loc="left")
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=1, frameon=False)
+    ax = axes[1]
+    keep, back = [0.40, 1.00], [0.60, 0.00]
+    ax.bar(x[:2] - 0.14, keep, 0.26, color=WR, label="외운 오답 유지")
+    ax.bar(x[:2] + 0.14, back, 0.26, color=OK, label="원래 정답으로 돌아감")
+    ax.text(x[1] + 0.14, 0.03, "0", ha="center", fontsize=10, color=OK, fontweight="bold")
+    ax.set_xticks(x[:2]); ax.set_xticklabels(labels[:2], fontsize=9); ax.set_ylim(0, 1.05); ax.set_xlim(-0.6, 1.6)
+    ax.set_title("(나) 규칙과 무관한 숫자 하나만 바꾸면", loc="left")
+    ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=1, frameon=False)
+    for a in axes:
+        a.spines["left"].set_visible(False)
+    fig.text(0.01, -0.23, "N 2,048, 오답 10%. (가) wd 1, seed 4개 평균. (나) seed 0, 흩어진 오답 wd 3·같은 칸 오답 wd 1,\n오답 자리마다 규칙과 무관한 숫자 3자리를 하나씩 바꿈 (E39).",
+             fontsize=7.8, color=INK2, va="top")
+    fig.savefig(Path(out, "F11_noise_mechanism.png"), bbox_inches="tight")
+    plt.close(fig)
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="docs/figures")
     a = ap.parse_args()
     setup_style()
     Path(a.out).mkdir(parents=True, exist_ok=True)
-    f9(a.out); f10(a.out)
+    f9(a.out); f10(a.out); f11(a.out)
     print("저장:", a.out)
