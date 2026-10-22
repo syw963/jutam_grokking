@@ -24,3 +24,9 @@
 | F10 `F10_noise_vs_wd.png` | 외운 오답 유지 비율 vs weight decay. wd ≤ 3 공존, wd 10 고침. 같은 칸 오답이 가장 끈질김 | 숫자 5개 흩어진 오답 wd 5 11%, wd 10 0%. 같은 칸 wd 5 100%, wd 10 5.5% |
 
 - F11 `F11_noise_mechanism.png` — E39. (가) 2층 attention을 끄면 흩어진 오답은 0으로 사라지고 처음 보는 문제는 1.00 유지, 같은 칸 오답은 그대로. (나) 규칙과 무관한 숫자 하나만 바꾸면 흩어진 오답의 60%가 원래 정답으로 돌아가고 같은 칸 오답은 그대로.
+
+## 보고서용 흑백 그림 (10월 23일, `docs/figures/report/그림01~11`)
+
+`python make_report_figures.py --res <결과 tgz를 푼 폴더> --out docs/figures/report`. 번호는 Google Docs 보고서 그림 번호와 같다.
+흰 배경, 흑백(계열은 마커·선 종류로 구분), 그림 제목 없음, 실험 코드(E6 등) 없음, 한국어 라벨, 여러 패널은 (가)(나). PNG 300dpi와 PDF.
+위의 F1~F11은 포스터·발표용으로 남겨 둔다.
