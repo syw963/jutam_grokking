@@ -112,6 +112,9 @@ def parse_args(argv=None):
     ap.add_argument("--ckpt-log", action="store_true")
     ap.add_argument("--ckpt-dense", type=int, default=0,
                     help="--ckpt-log와 함께: N step마다 run별 체크포인트도 저장 (내부 분석을 촘촘히)")
+    ap.add_argument("--ckpt-early-every", type=int, default=0,
+                    help="--ckpt-log와 함께: 처음 --ckpt-early-until step까지는 이 간격으로 저장 (E39: 초반 오답 암기·교정 추적)")
+    ap.add_argument("--ckpt-early-until", type=int, default=0)
     ap.add_argument("--device", default="auto")
     ap.add_argument("--dtype", choices=["bf16", "fp16", "fp32"], default="bf16")
     ap.add_argument("--runs-dir", default="runs")
@@ -501,11 +504,13 @@ def main(argv=None):
                 torch.cuda.synchronize()
             elapsed += time.time() - t0
             do_eval()
-            if args.ckpt_log and (step in grid or (args.ckpt_dense and step % args.ckpt_dense == 0)):
-                for slot, i in enumerate(active):
-                    save_member_ckpt(slot, i)
             compact()
             t0 = time.time()
+        if args.ckpt_log and (step in grid or (args.ckpt_dense and step % args.ckpt_dense == 0)
+                              or (args.ckpt_early_every and step <= args.ckpt_early_until
+                                  and step % args.ckpt_early_every == 0)):
+            for slot, i in enumerate(active):
+                save_member_ckpt(slot, i)
         if step % args.ckpt_every == 0:
             save_group_ckpt()
     elapsed += time.time() - t0
