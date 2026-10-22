@@ -92,6 +92,8 @@ def parse_args(argv=None):
     ap.add_argument("--noise-mode", choices=["scatter", "cell"], default="scatter",
                     help="scatter: 예제마다 한 칸, cell: 표 칸 단위로 일관된 오답 (src/noise.py)")
     ap.add_argument("--noise-seed", type=int, default=777)
+    ap.add_argument("--loss", choices=["ce", "mse"], default="ce",
+                    help="E36: 학습 손실. mse = 출력 logit과 one-hot 정답의 제곱 오차 합(Doshi 외 2024와 같은 방식). 평가 loss는 항상 CE")
     ap.add_argument("--steps", type=int, default=100000)
     ap.add_argument("--eval-every", type=int, default=100)
     ap.add_argument("--n-eval", type=int, default=4096)
@@ -478,7 +480,11 @@ def main(argv=None):
                     ib = idx[:, s:s + chunk]
                     yb = torch.gather(Ya, 1, ib.unsqueeze(-1).expand(-1, -1, m))
                     lg = vmap(f_logits, in_dims=(0, 0, 0))(params, x_tr[ib], yb)
-            ce = F.cross_entropy(lg.float().permute(0, 3, 1, 2), yb, reduction="none")
+            if args.loss == "mse":
+                lf = lg.float()
+                ce = (lf - F.one_hot(yb, lf.shape[-1]).to(lf.dtype)).pow(2).sum(-1)
+            else:
+                ce = F.cross_entropy(lg.float().permute(0, 3, 1, 2), yb, reduction="none")
             if mask_tr is None:
                 (ce.sum((1, 2)) / (B * m)).sum().backward()
             else:
