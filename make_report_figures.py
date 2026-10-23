@@ -255,7 +255,7 @@ def fig06(res, out):
 
 
 # ---------------------------------------------------------------- 그림 7
-COV = {  # N = 768. (관찰 범위, 지연 중앙값, 일반화 수/10)
+COV = {  # N = 768. (관찰 비율, 지연 중앙값, 일반화 수/10)
     "서로 다른 칸 5개 배선": [(0.944, 6900, 10), (0.923, 5300, 10), (0.882, 3700, 10), (0.862, 3450, 10),
                          (0.842, 2950, 10), (0.822, 2700, 10), (0.802, 2600, 10), (0.782, 2500, 10)],
     "서로 다른 칸 4개 배선": [(0.898, 21000, 5), (0.884, 15500, 5), (0.851, 9700, 9), (0.831, 7000, 10),
@@ -270,7 +270,7 @@ def fig07(out):
             if g < 10:
                 ax.annotate(f"{g}/10", (x, y), textcoords="offset points", xytext=(7, 2), ha="left", fontsize=7)
     ax.set_yscale("log"); log_ticks(ax, "y", [2500, 5000, 10000, 20000])
-    ax.set_xlabel("관찰 범위 (학습 집합에 나온 칸의 비율)"); ax.set_ylabel("지연 중앙값 (step)")
+    ax.set_xlabel("관찰 비율"); ax.set_ylabel("지연 중앙값 (step)")
     ax.legend(loc="upper left")
     save(fig, out, "그림07")
 
@@ -286,7 +286,7 @@ def fig08(out):
     xs = np.logspace(np.log10(400), np.log10(2900), 50)
     for a in ax:
         a.plot(xs, 2.81 * xs ** 0.764, color=G3, lw=2.5, zorder=0)
-    series = [("기본 모델", C5, [298, 554, 618, 797, 1047]), ("대형 모델", C5, [277, 490, 574, 774, 1003]),
+    series = [("기본 모델", C5, [298, 554, 618, 797, 1047]), ("확장 모델", C5, [277, 490, 574, 774, 1003]),
               ("GPT형 디코더", C5, [984, 1406, 1855, 2398, 3384]), ("곱셈 a×b (n 소수)", MUL_N * (MUL_N + 1) / 2, [240, 397, 400, 545, 752, 975])]
     for i, (lab, x, y) in enumerate(series):
         ax[0].plot(x, y, label=lab, **sty(i))
@@ -331,7 +331,7 @@ def fig09(res, out, example="w6_p1_m0_c1024_wd1_s1"):
     ax[1].plot(lim, lim, color=G2, lw=0.8, ls="--", label="y = x")
     ax[1].set_xscale("log"); ax[1].set_yscale("log")
     log_ticks(ax[1], "x", [300, 1000, 3000, 10000]); log_ticks(ax[1], "y", [1000, 3000, 10000])
-    ax[1].set_xlabel("관찰 칸 50% 도달 step"); ax[1].set_ylabel("미관찰 칸 50% 도달 step")
+    ax[1].set_xlabel("관찰 칸 정확도 50% 도달 step"); ax[1].set_ylabel("미관찰 칸 정확도 50% 도달 step")
     ax[1].legend(loc="upper left", fontsize=7.5)
     panel(ax[0], "(가)"); panel(ax[1], "(나)")
     save(fig, out, "그림09")
