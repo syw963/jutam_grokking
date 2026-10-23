@@ -370,21 +370,24 @@ def fig10(res, out, wd=1, frac="0.1"):
 
 # ---------------------------------------------------------------- 그림 11
 def fig11(out):
-    fig, ax = plt.subplots(figsize=(W2, 2.8))
+    """(가) 오답 유지율 vs wd (E30·E34·E36·E37·E41), (나) 두 수 과제의 평가 정확도 vs wd (E34·E36·E41). 값은 docs/analysis/e41_m2_wd.csv."""
+    fig, ax = plt.subplots(1, 2, figsize=(W1, 2.8), gridspec_kw=dict(wspace=0.38))
     series = [("수열 과제, 흩어진 오답", [1, 2, 3, 5, 10], [100, 100, 100, 11, 0]),
               ("수열 과제, 같은 칸 오답", [1, 2, 3, 5, 10], [100, 100, 100, 100, 5.5]),
-              ("두 수 과제", [1, 2, 3, 10], [100, 100, 100, 0.5])]
+              ("두 수 과제", [1, 2, 3, 4, 5, 7, 10], [100, 100, 100, 100, 100, 21, 0.5])]
     for i, (lab, x, y) in enumerate(series):
-        if len(x) == 4:   # 두 수 과제는 wd 5를 재지 않았다: 3→10 구간 점선
-            kw = sty(i); kw.pop("linestyle")
-            ax.plot(x[:3], y[:3], ls="-", **kw, label=lab)
-            ax.plot(x[2:], y[2:], ls=":", color=kw["color"], marker="none")
-            ax.plot(x[3:], y[3:], ls="none", **kw)
-        else:
-            ax.plot(x, y, label=lab, **sty(i))
-    ax.set_xscale("log"); ax.set_xticks([1, 2, 3, 5, 10]); ax.set_xticklabels(["1", "2", "3", "5", "10"]); ax.minorticks_off()
-    ax.set_ylim(-5, 108); ax.set_xlabel("weight decay"); ax.set_ylabel("오답 유지율 (%)")
-    ax.legend(loc="lower left")
+        ax[0].plot(x, y, label=lab, **sty(i))
+    kw = sty(2); kw.update(markerfacecolor="white", linestyle="none")
+    ax[0].plot([15], [4.4], **kw)   # wd 15: 오답은 외우지 않지만 규칙도 잃음 → 선으로 잇지 않음
+    ax[0].annotate("규칙 상실", (15, 4.4), textcoords="offset points", xytext=(0, 7), ha="center", fontsize=7)
+    ax[0].set_ylabel("오답 유지율 (%)"); ax[0].legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=7)
+    wd = [1, 2, 3, 4, 5, 7, 10, 15]
+    ax[1].plot(wd, [100, 100, 100, 100, 100, 100, 100, 84], label="오답 없음", **sty(1))
+    ax[1].plot(wd, [97.6, 97.4, 81.8, 36.8, 60.8, 97.4, 97.3, 28.0], label="오답 예제 10%", **sty(2))
+    ax[1].set_ylabel("평가 정확도 (%)"); ax[1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=7)
+    for a, p in zip(ax, ("(가)", "(나)")):
+        a.set_xscale("log"); a.set_xticks(wd); a.set_xticklabels([str(w) for w in wd]); a.minorticks_off()
+        a.set_xlim(0.85, 18); a.set_ylim(-5, 108); a.set_xlabel("weight decay"); panel(a, p)
     save(fig, out, "그림11")
 
 

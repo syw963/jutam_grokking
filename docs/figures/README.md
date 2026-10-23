@@ -30,3 +30,4 @@
 `python make_report_figures.py --res <결과 tgz를 푼 폴더> --out docs/figures/report`. 번호는 Google Docs 보고서 그림 번호와 같다.
 흰 배경, 흑백(계열은 마커·선 종류로 구분), 그림 제목 없음, 실험 코드(E6 등) 없음, 한국어 라벨, 여러 패널은 (가)(나). PNG 300dpi와 PDF.
 위의 F1~F11은 포스터·발표용으로 남겨 둔다.
+- 그림11 (10월 23일 18시 갱신, E41 반영): (가) 오답 유지율 vs weight decay — 두 수 과제의 점선(wd 3 → 10)을 측정값(wd 4·5·7·15)으로 교체, wd 15는 규칙을 잃은 점이라 빈 마커로 따로 표시. (나) 두 수 과제의 평가 정확도 vs weight decay(오답 예제 10% vs 오답 없음). 범례는 패널 아래. `python make_report_figures.py --res . --only 11`(값은 코드에 있어 결과 폴더가 필요 없음).
