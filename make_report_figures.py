@@ -282,27 +282,37 @@ WD_N = np.array([31, 50, 71]); CW = WD_N * (WD_N + 1) / 2
 
 
 def fig08(out):
-    fig, ax = plt.subplots(1, 2, figsize=(W1, 2.9), sharey=True)
+    fig, ax = plt.subplots(1, 2, figsize=(W1, 2.9), gridspec_kw=dict(wspace=0.38))
     xs = np.logspace(np.log10(400), np.log10(2900), 50)
-    for a in ax:
-        a.plot(xs, 2.81 * xs ** 0.764, color=G3, lw=2.5, zorder=0)
+    ax[0].plot(xs, 2.81 * xs ** 0.764, color=G3, lw=2.5, zorder=0)
     series = [("기본 모델", C5, [298, 554, 618, 797, 1047]), ("확장 모델", C5, [277, 490, 574, 774, 1003]),
               ("GPT형 디코더", C5, [984, 1406, 1855, 2398, 3384]), ("곱셈 a×b (n 소수)", MUL_N * (MUL_N + 1) / 2, [240, 397, 400, 545, 752, 975])]
     for i, (lab, x, y) in enumerate(series):
         ax[0].plot(x, y, label=lab, **sty(i))
     ax[0].plot(1275, 325, marker="x", ls="none", color=K, ms=6, label="곱셈 n = 50 (합성수)")
-    wds = [("wd 0.3", [277, 595, 1259]), ("wd 1", [298, 618, 1047]), ("wd 3", [305, 633, 1183]), ("wd 10", [413, 997, 1821])]
-    order = [2, 0, 1, 3]
-    for (lab, y), i in zip(wds, order):
-        ax[1].plot(CW, y, label=lab, **sty(i))
-    ax[1].plot(CW[-1], 1259, marker="v", color=G2, ms=7, ls="none")   # 상한값 표시
-    for a, p in zip(ax, ("(가)", "(나)")):
-        a.set_xscale("log"); a.set_yscale("log")
-        log_ticks(a, "x", [500, 1000, 2000]); log_ticks(a, "y", [200, 500, 1000, 2000, 5000])
-        a.set_xlabel("연산 표의 칸 수 C"); panel(a, p)
+    # (나) Weight decay에 따른 경계 비율(같은 n의 wd 1 대비). E32 기본·E38·E40, docs/analysis/e40_wd_law.csv
+    WD = [0.3, 1, 2, 3, 5, 7, 10, 15]
+    RAT = {31: [0.931, 1, 1.024, 1.024, 0.965, 0.931, 1.388, 2.171],
+           50: [0.964, 1, 0.964, 1.025, 0.964, 0.964, 1.615, 2.766],
+           71: [1.202, 1, 1.024, 1.129, 0.931, 1.202, 1.739, 2.775]}
+    for i, (n, y) in enumerate(RAT.items()):
+        kw = sty(i)
+        ax[1].plot(WD[:-1], y[:-1], label=f"n = {n}", **kw)
+        x15 = 15 * (1 + 0.05 * (i - 1))
+        ax[1].plot([10, x15], y[-2:], color=kw["color"], ls=":", marker="none")   # wd 15: 일시적 일반화의 경계
+        ax[1].plot(x15, y[-1], ls="none", marker=kw["marker"], color=kw["color"], markerfacecolor="white", markeredgewidth=1)
+    ax[1].plot(0.3, RAT[71][0], ls="none", marker=sty(2)["marker"], color=sty(2)["color"], markerfacecolor="white", markeredgewidth=1)
+    ax[1].axhline(1, color=G3, lw=2.5, zorder=0)
+    ax[0].set_xscale("log"); ax[0].set_yscale("log")
+    log_ticks(ax[0], "x", [500, 1000, 2000]); log_ticks(ax[0], "y", [200, 500, 1000, 2000, 5000])
+    ax[0].set_xlabel("연산 표의 칸 수 C"); panel(ax[0], "(가)")
+    ax[1].set_xscale("log"); ax[1].set_xticks(WD); ax[1].set_xticklabels(["0.3", "1", "2", "3", "5", "7", "10", "15"])
+    ax[1].minorticks_off(); ax[1].set_ylim(0.8, 3.0); ax[1].set_xlabel("weight decay")
+    ax[1].set_ylabel("경계 비율 (Weight decay 1 대비)"); panel(ax[1], "(나)")
+    ax[1].yaxis.set_tick_params(labelleft=True)
     ax[0].set_ylim(200, 12000)
     ax[0].legend(loc="upper left", ncol=2, fontsize=7, columnspacing=0.8, handlelength=2.2)
-    ax[1].legend(loc="upper left", ncol=2, fontsize=7, columnspacing=0.8, handlelength=2.2)
+    ax[1].legend(loc="upper left", fontsize=7, handlelength=2.2)
     ax[0].set_ylabel(r"일반화 경계 $N_0$")
     save(fig, out, "그림08")
 
@@ -372,14 +382,16 @@ def fig10(res, out, wd=1, frac="0.1"):
 def fig11(out):
     """(가) 오답 유지율 vs wd (E30·E34·E36·E37·E41), (나) 두 수 과제의 평가 정확도 vs wd (E34·E36·E41). 값은 docs/analysis/e41_m2_wd.csv."""
     fig, ax = plt.subplots(1, 2, figsize=(W1, 2.8), gridspec_kw=dict(wspace=0.38))
-    series = [("수열 과제, 흩어진 오답", [1, 2, 3, 5, 10], [100, 100, 100, 11, 0]),
-              ("수열 과제, 같은 칸 오답", [1, 2, 3, 5, 10], [100, 100, 100, 100, 5.5]),
-              ("두 수 과제", [1, 2, 3, 4, 5, 7, 10], [100, 100, 100, 100, 100, 21, 0.5])]
-    for i, (lab, x, y) in enumerate(series):
+    # 수열 과제: E40 N 2,048, 6만 step (wd 1·3·5·7·10). 두 수 과제: E34·E36·E41, 20만 step.
+    # wd 15는 규칙도 학습하지 못한 점이라 빈 기호로 따로 둔다(수열 1.3·4.4%, 두 수 4.4%).
+    series = [("수열 과제, 흩어진 오답", [1, 3, 5, 7, 10], [100, 100, 8.4, 0, 0], 1.3),
+              ("수열 과제, 같은 칸 오답", [1, 3, 5, 7, 10], [100, 100, 100, 15, 4.4], 4.4),
+              ("두 수 과제", [1, 2, 3, 4, 5, 7, 10], [100, 100, 100, 100, 100, 21, 0.5], 4.4)]
+    for i, (lab, x, y, y15) in enumerate(series):
         ax[0].plot(x, y, label=lab, **sty(i))
-    kw = sty(2); kw.update(markerfacecolor="white", linestyle="none")
-    ax[0].plot([15], [4.4], **kw)   # wd 15: 오답은 외우지 않지만 규칙도 잃음 → 선으로 잇지 않음
-    ax[0].annotate("규칙 상실", (15, 4.4), textcoords="offset points", xytext=(0, 7), ha="center", fontsize=7)
+        kw = sty(i); kw.update(markerfacecolor="white", linestyle="none")
+        ax[0].plot([15 * (1 + 0.06 * (i - 1))], [y15], **kw)
+    ax[0].annotate("규칙 상실", (15, 6), textcoords="offset points", xytext=(0, 7), ha="center", fontsize=7)
     ax[0].set_ylabel("오답 유지율 (%)"); ax[0].legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=7)
     wd = [1, 2, 3, 4, 5, 7, 10, 15]
     ax[1].plot(wd, [100, 100, 100, 100, 100, 100, 100, 84], label="오답 없음", **sty(1))
