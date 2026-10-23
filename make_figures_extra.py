@@ -1,7 +1,7 @@
 """추가 그림 2장 (10월 22일): 값은 docs/실험_기록.md의 E30~E37 표에서 옮김.
 
 F9  법칙의 일반성: 모델 크기·구조·연산을 바꿔도 같은 꼴 (E31·E32·E33·E35)
-F10 외운 오답과 규제 세기: wd가 약하면 공존, 강하면 고침 (E30·E34·E36·E37)
+F10 외운 오답과 규제 세기: wd가 약하면 공존, 강하면 고침, 너무 강하면 규칙도 잃음 (E30·E34·E36·E37·E41)
 
     python make_figures_extra.py --out docs/figures
 """
@@ -56,33 +56,46 @@ def f9(out):
 
 
 def f10(out):
-    fig, ax = plt.subplots(figsize=(7.2, 4.6))
-    wd = {"x": [1, 2, 3, 5, 10]}
-    series = [("숫자 5개 · 흩어진 오답", [1, 2, 3, 5, 10], [100, 100, 100, 11, 0], C[0], "o"),
-              ("숫자 5개 · 같은 칸에 일관된 오답", [1, 2, 3, 5, 10], [100, 100, 100, 100, 5.5], C[1], "s"),
-              ("두 수 과제 · 정답 전체 오답", [1, 2, 3, 10], [100, 100, 100, 0.5], C[2], "^")]
-    offs = {0: (8, -16), 1: (8, 8), 2: (8, -3)}
-    for i, (lab, x, y, col, mk) in enumerate(series):
-        if len(x) == 4:  # 두 수 과제는 wd 5를 재지 않음: 3→10 구간은 점선
-            ax.plot(x[:3], y[:3], "-", color=col, lw=2, zorder=2)
-            ax.plot(x[2:], y[2:], ":", color=col, lw=2, zorder=2)
-            ax.plot(x, y, ls="none", marker=mk, ms=8, mec=SURF, mew=2, color=col, zorder=3)
-        else:
-            ax.plot(x, y, "-", color=col, lw=2, marker=mk, ms=8, mec=SURF, mew=2, zorder=3)
-        ax.annotate(lab, (x[-1], y[-1]), xytext=offs[i], textcoords="offset points", va="center", fontsize=9, color=INK)
+    """(가) 외운 오답 비율 vs wd, (나) 두 수 과제의 처음 보는 문제 정답률 vs wd. 값은 docs/실험_기록.md E30·E34·E36·E37·E41."""
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.8), gridspec_kw=dict(width_ratios=[1.35, 1]))
+    ax = axes[0]
+    series = [("숫자 5개 · 흩어진 오답", [1, 2, 3, 5, 10], [100, 100, 100, 11, 0], C[0], "o", (8, -14)),
+              ("숫자 5개 · 같은 칸에 일관된 오답", [1, 2, 3, 5, 10], [100, 100, 100, 100, 5.5], C[1], "s", (8, 10)),
+              ("두 수 과제 · 정답 전체 오답", [1, 2, 3, 4, 5, 7, 10], [100, 100, 100, 100, 100, 21, 0.5], C[2], "^", (8, -4))]
+    for lab, x, y, col, mk, off in series:
+        ax.plot(x, y, "-", color=col, lw=2, marker=mk, ms=8, mec=SURF, mew=2, zorder=3, label=lab)
+    ax.plot([15], [4.4], marker="^", ms=8, mfc=SURF, mec=C[2], mew=2, ls="none", zorder=3)
+    ax.annotate("wd 15: 오답을 외우지 않지만\n규칙도 잃음 (나)", (15, 4.4), xytext=(4, 110), textcoords="offset points",
+                ha="center", fontsize=8, color=INK2, arrowprops=dict(arrowstyle="-", color=INK2, lw=0.8))
+    ax.annotate("5개 중 4개 고침", (7, 21), xytext=(9, 4), textcoords="offset points", fontsize=8, color=INK2)
     ax.axvspan(0.9, 3.4, color=GRID, alpha=0.45, zorder=0, lw=0)
-    ax.text(1.75, 52, "공존\n규칙을 깨치고도\n외운 오답을 그대로 냄", ha="center", va="center", fontsize=9, color=INK2)
-    ax.text(13.5, 55, "고침\n깨닫는 순간\n오답도\n원래 정답으로", ha="center", va="center", fontsize=9, color=INK2)
-    ax.set_xscale("log"); ax.set_xlim(0.9, 24); ax.set_ylim(-5, 108)
-    ax.set_xticks([1, 2, 3, 5, 10]); ax.set_xticklabels(["1", "2", "3", "5", "10"]); ax.minorticks_off()
+    ax.legend(fontsize=8.5, loc="lower left", bbox_to_anchor=(0.0, 0.06), frameon=True, facecolor=SURF, edgecolor="none")
+    ax.text(1.75, 60, "공존\n규칙을 깨치고도\n외운 오답을 그대로 냄", ha="center", va="center", fontsize=9, color=INK2)
+    ax.set_xscale("log"); ax.set_xlim(0.9, 30); ax.set_ylim(-5, 108)
+    ax.set_xticks([1, 2, 3, 4, 5, 7, 10, 15]); ax.set_xticklabels(["1", "2", "3", "4", "5", "7", "10", "15"]); ax.minorticks_off()
     ax.set_xlabel("weight decay (규제 세기, 로그)")
     ax.set_ylabel("학습 끝에 외운 오답을 내는 비율 (%)")
-    ax.set_title("외운 오답은 규제가 약하면 남고, 강하면 고쳐진다", loc="left")
-    ax.text(0.0, -0.2, "숫자 5개: 데이터 2,048개, 오답 10%, 10만~20만 step (E30·E34·E37). 두 수 과제: 1,100개, 오답 예제 10% (E34·E36).\n"
-            "wd 1~3에서는 세 조건 모두 100%(점이 겹침). 처음 보는 문제 정확도는 모든 점에서 93~100%. 데이터 768개는 wd 10에서 아무것도 배우지 못함.",
-            transform=ax.transAxes, fontsize=7.8, color=INK2, va="top")
-    ax.spines["left"].set_visible(False)
-    fig.savefig(Path(out, "F10_noise_vs_wd.png"))
+    ax.set_title("(가) 외운 오답은 규제가 약하면 남고, 강하면 고쳐진다", loc="left", fontsize=10.5)
+    ax = axes[1]
+    wd = [1, 2, 3, 4, 5, 7, 10, 15]
+    noisy = [97.6, 97.4, 81.8, 36.8, 60.8, 97.4, 97.3, 28.0]
+    clean = [100, 100, 100, 100, 100, 100, 100, 84.0]
+    ax.plot(wd, clean, "-", color=INK2, lw=1.6, marker="o", ms=6, mec=SURF, mew=1.5, zorder=2, label="오답 없음 (대조군)")
+    ax.plot(wd, noisy, "-", color=C[2], lw=2, marker="^", ms=8, mec=SURF, mew=2, zorder=3, label="오답 예제 10%")
+    ax.axvspan(3.4, 5.9, color=C[1], alpha=0.10, zorder=0, lw=0)
+    ax.text(4.5, 12, "오답은 지키고\n규칙이 무너짐", ha="center", fontsize=8.5, color=INK2)
+    ax.set_xscale("log"); ax.set_xlim(0.9, 18); ax.set_ylim(0, 105)
+    ax.set_xticks(wd); ax.set_xticklabels([str(w) for w in wd]); ax.minorticks_off()
+    ax.set_xlabel("weight decay (규제 세기, 로그)")
+    ax.set_ylabel("처음 보는 문제 정답률, 학습 끝 (%)")
+    ax.set_title("(나) 두 수 과제: 규칙은 지켜지는가", loc="left", fontsize=10.5)
+    ax.legend(fontsize=8.5, loc="lower left", frameon=False)
+    for a in axes:
+        a.spines["left"].set_visible(False)
+    fig.text(0.01, -0.04, "숫자 5개: 데이터 2,048개, 오답 10%, 10만~20만 step (E30·E34·E37). 두 수 과제: 1,100개, 오답 예제 10%, 20만 step, seed 4~5개 평균 (E34·E36·E41).\n"
+             "숫자 5개는 처음 보는 문제 정답률이 모든 점에서 93~100%. 데이터 768개는 wd 10에서 아무것도 배우지 못함.",
+             fontsize=7.8, color=INK2, va="top")
+    fig.savefig(Path(out, "F10_noise_vs_wd.png"), bbox_inches="tight")
     plt.close(fig)
 
 
