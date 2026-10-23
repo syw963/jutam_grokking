@@ -119,8 +119,11 @@ def fig01(res, out):
 
 # ---------------------------------------------------------------- 그림 2
 def fig02(out):
-    fig, ax = plt.subplots(figsize=(W1, 2.5))
-    ax.set_xlim(0, 10.6); ax.set_ylim(0, 4.2); ax.axis("off")
+    """(가) 과제의 구조, (나) 참조 그래프 두 가지(연결/비연결)."""
+    fig = plt.figure(figsize=(W1, 4.0))
+    ax = fig.add_axes([0, 0.40, 1, 0.60])
+    ax.set_xlim(0, 10.6); ax.set_ylim(0.2, 4.2); ax.axis("off")
+    ax.text(0.0, 4.15, "(가)", fontsize=10, fontweight="bold", va="top")
     xs = np.arange(5) * 1.15 + 1.2
     inp, sym = [3, 17, 8, 42, 25], [f"$x_{i}$" for i in range(1, 6)]
     box = dict(boxstyle="square,pad=0.25", fc="white", ec=K, lw=0.8)
@@ -145,6 +148,34 @@ def fig02(out):
     ax.text(x0 + n * s / 2, y0 - 0.25, "b", ha="center", fontsize=8.5, style="italic")
     ax.text(x0 - 0.25, y0 + n * s / 2, "a", va="center", fontsize=8.5, style="italic")
     ax.text(x0 + n * s + 0.15, y0 + n * s / 2, "한 예제가\n표의 칸 5개를\n제공", va="center", fontsize=7.5, color=G1)
+
+    # (나) 참조 그래프: 위치 1~5를 오각형 꼭짓점에 둔다
+    bx = fig.add_axes([0, 0, 1, 0.42])
+    bx.set_xlim(0, 10.6); bx.set_ylim(-1.02, 1.3); bx.axis("off"); bx.set_aspect("equal")
+    bx.text(0.0, 1.28, "(나)", fontsize=10, fontweight="bold", va="top")
+    ang = np.pi / 2 - 2 * np.pi * np.arange(5) / 5
+    r = 0.68
+
+    def graph(cx, edges, doubled, title, note):
+        P = np.c_[cx + r * np.cos(ang), 0.45 + r * np.sin(ang)]
+        for a, b in edges:
+            pa, pb = P[a - 1], P[b - 1]
+            if (a, b) in doubled:   # 같은 선이 두 번 그어짐
+                d = pb - pa; nrm = np.array([-d[1], d[0]]) / np.hypot(*d) * 0.045
+                for sgn in (1, -1):
+                    bx.plot([pa[0] + sgn * nrm[0], pb[0] + sgn * nrm[0]], [pa[1] + sgn * nrm[1], pb[1] + sgn * nrm[1]], color=K, lw=1.0)
+            else:
+                bx.plot([pa[0], pb[0]], [pa[1], pb[1]], color=K, lw=1.0)
+        for k, (x, y) in enumerate(P, 1):
+            bx.add_patch(plt.Circle((x, y), 0.13, fc="white", ec=K, lw=0.9, zorder=3))
+            bx.text(x, y, str(k), ha="center", va="center", fontsize=8, zorder=4)
+        bx.text(cx, -0.52, title, ha="center", va="center", fontsize=8.5, fontweight="bold")
+        bx.text(cx, -0.85, note, ha="center", va="center", fontsize=7.5, color=G1)
+
+    graph(2.9, [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1)], set(), "5-순환 배선(기본 규칙): 연결",
+          "서로 다른 선 5개 → a+b에서 서로 다른 칸 5개")
+    graph(7.7, [(1, 2), (2, 3), (3, 1), (4, 5)], {(4, 5)}, "3+2 순환 배선: 비연결",
+          "4–5 선이 두 번 그어짐 → a+b에서 서로 다른 칸 4개")
     save(fig, out, "그림02")
 
 
