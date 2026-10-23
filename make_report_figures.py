@@ -321,7 +321,7 @@ def fig08(out):
     for i, (lab, x, y) in enumerate(series):
         ax[0].plot(x, y, label=lab, **sty(i))
     ax[0].plot(1275, 325, marker="x", ls="none", color=K, ms=6, label="곱셈 n = 50 (합성수)")
-    # (나) Weight decay에 따른 경계 비율(같은 n의 wd 1 대비). E32 기본·E38·E40, docs/analysis/e40_wd_law.csv
+    # (나) Weight Decay에 따른 경계 비율(같은 n의 wd 1 대비). E32 기본·E38·E40, docs/analysis/e40_wd_law.csv
     WD = [0.3, 1, 2, 3, 5, 7, 10, 15]
     RAT = {31: [0.931, 1, 1.024, 1.024, 0.965, 0.931, 1.388, 2.171],
            50: [0.964, 1, 0.964, 1.025, 0.964, 0.964, 1.615, 2.766],
@@ -338,8 +338,8 @@ def fig08(out):
     log_ticks(ax[0], "x", [500, 1000, 2000]); log_ticks(ax[0], "y", [200, 500, 1000, 2000, 5000])
     ax[0].set_xlabel("연산 표의 칸 수 C"); panel(ax[0], "(가)")
     ax[1].set_xscale("log"); ax[1].set_xticks(WD); ax[1].set_xticklabels(["0.3", "1", "2", "3", "5", "7", "10", "15"])
-    ax[1].minorticks_off(); ax[1].set_ylim(0.8, 3.0); ax[1].set_xlabel("weight decay")
-    ax[1].set_ylabel("경계 비율 (Weight decay 1 대비)"); panel(ax[1], "(나)")
+    ax[1].minorticks_off(); ax[1].set_ylim(0.8, 3.0); ax[1].set_xlabel("Weight Decay")
+    ax[1].set_ylabel("경계 비율 (Weight Decay 1 대비)"); panel(ax[1], "(나)")
     ax[1].yaxis.set_tick_params(labelleft=True)
     ax[0].set_ylim(200, 12000)
     ax[0].legend(loc="upper left", ncol=2, fontsize=7, columnspacing=0.8, handlelength=2.2)
@@ -430,7 +430,7 @@ def fig11(out):
     ax[1].set_ylabel("평가 정확도 (%)"); ax[1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=7)
     for a, p in zip(ax, ("(가)", "(나)")):
         a.set_xscale("log"); a.set_xticks(wd); a.set_xticklabels([str(w) for w in wd]); a.minorticks_off()
-        a.set_xlim(0.85, 18); a.set_ylim(-5, 108); a.set_xlabel("weight decay"); panel(a, p)
+        a.set_xlim(0.85, 18); a.set_ylim(-5, 108); a.set_xlabel("Weight Decay"); panel(a, p)
     save(fig, out, "그림11")
 
 
