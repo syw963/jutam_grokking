@@ -119,7 +119,7 @@ def fig01(res, out):
 
 # ---------------------------------------------------------------- 그림 2
 def fig02(out):
-    """(가) 과제의 구조, (나) 참조 그래프 두 가지(연결/비연결)."""
+    """(가) 과제의 구조, (나) 표 4의 네 가지 배선 구조의 참조 그래프."""
     fig = plt.figure(figsize=(W1, 4.0))
     ax = fig.add_axes([0, 0.40, 1, 0.60])
     ax.set_xlim(0, 10.6); ax.set_ylim(0.2, 4.2); ax.axis("off")
@@ -151,13 +151,13 @@ def fig02(out):
 
     # (나) 참조 그래프: 위치 1~5를 오각형 꼭짓점에 둔다
     bx = fig.add_axes([0, 0, 1, 0.42])
-    bx.set_xlim(0, 10.6); bx.set_ylim(-1.02, 1.3); bx.axis("off"); bx.set_aspect("equal")
-    bx.text(0.0, 1.28, "(나)", fontsize=10, fontweight="bold", va="top")
+    bx.set_xlim(0, 10.6); bx.set_ylim(-1.12, 1.45); bx.axis("off"); bx.set_aspect("equal")
+    bx.text(0.0, 1.43, "(나)", fontsize=10, fontweight="bold", va="top")
     ang = np.pi / 2 - 2 * np.pi * np.arange(5) / 5
     r = 0.68
 
     def graph(cx, edges, doubled, title, note):
-        P = np.c_[cx + r * np.cos(ang), 0.45 + r * np.sin(ang)]
+        P = np.c_[cx + r * np.cos(ang), 0.55 + r * np.sin(ang)]
         for a, b in edges:
             pa, pb = P[a - 1], P[b - 1]
             if (a, b) in doubled:   # 같은 선이 두 번 그어짐
@@ -169,13 +169,19 @@ def fig02(out):
         for k, (x, y) in enumerate(P, 1):
             bx.add_patch(plt.Circle((x, y), 0.13, fc="white", ec=K, lw=0.9, zorder=3))
             bx.text(x, y, str(k), ha="center", va="center", fontsize=8, zorder=4)
-        bx.text(cx, -0.52, title, ha="center", va="center", fontsize=8.5, fontweight="bold")
-        bx.text(cx, -0.85, note, ha="center", va="center", fontsize=7.5, color=G1)
+        bx.text(cx, -0.38, title, ha="center", va="center", fontsize=8.5, fontweight="bold")
+        bx.text(cx, -0.80, note, ha="center", va="center", fontsize=7.5, color=G1, linespacing=1.35)
 
-    graph(2.9, [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1)], set(), "5-순환 배선(기본 규칙): 연결",
-          "서로 다른 선 5개 → a+b에서 서로 다른 칸 5개")
-    graph(7.7, [(1, 2), (2, 3), (3, 1), (4, 5)], {(4, 5)}, "3+2 순환 배선: 비연결",
-          "4–5 선이 두 번 그어짐 → a+b에서 서로 다른 칸 4개")
+    # 표 4의 네 가지 배선 구조. 2-순환이 있는 두 그래프는 선이 엇갈리지 않는 실제 배선(w2_m4, w2_m15)을 예로 그렸다.
+    # a+b에서 서로 다른 칸 수 = 5 − (2-순환 수)
+    graph(1.35, [(1, 2), (2, 3), (3, 4), (4, 5), (5, 1)], set(), "5-순환 배선",
+          "기본 규칙, 연결\n서로 다른 칸 5개")
+    graph(3.97, [(1, 5), (1, 4), (2, 4), (3, 4)], {(1, 5)}, "2-순환 포함 연결 배선",
+          "1–5 선이 두 번, 연결\n서로 다른 칸 4개")
+    graph(6.59, [(1, 2), (2, 3), (3, 1), (4, 5)], {(4, 5)}, "3+2 순환 배선",
+          "4–5 선이 두 번, 비연결\n서로 다른 칸 4개")
+    graph(9.21, [(1, 5), (2, 5), (3, 4)], {(1, 5), (3, 4)}, "2-순환 2개 배선",
+          "1–5, 3–4 선이 두 번, 비연결\n서로 다른 칸 3개")
     save(fig, out, "그림02")
 
 
