@@ -41,11 +41,13 @@ def first(st, x, thr):
     return int(st[i[0]]) if len(i) else None
 
 
-def part_a(patterns, out):
+def part_a(patterns, out, exclude=()):
     from src.rules import Rule, ref_graph
     runs = []
     for d in run_dirs(patterns):
         c = json.loads((d / "config.json").read_text())
+        if any(d.name.startswith(x + "_") for x in exclude):   # 예: 보고서 본문에서 뺀 첫 칸 참조 규칙(l1_first)
+            continue
         rule = Rule(c["rule_spec"], c["n"])
         if len(rule.steps) != 1 or rule.steps[0].code != "REF":
             continue
@@ -125,10 +127,11 @@ def main():
     ap.add_argument("--delay", nargs="*", default=[])
     ap.add_argument("--law", nargs="*", default=[])
     ap.add_argument("--out", default="sens_report")
+    ap.add_argument("--exclude-rule", nargs="*", default=[], help="뺄 규칙 이름(run 폴더 앞부분), 예: l1_first")
     a = ap.parse_args()
     lines = []
     if a.delay:
-        lines += part_a(a.delay, a.out) + [""]
+        lines += part_a(a.delay, a.out, a.exclude_rule) + [""]
     if a.law:
         lines += part_b(a.law)
     Path(a.out).mkdir(parents=True, exist_ok=True)

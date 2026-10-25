@@ -187,15 +187,15 @@ def fig02(out):
 
 
 # ---------------------------------------------------------------- 그림 3
-BOUND = [("a+b", 276, 211), ("a+b", 496, 329), ("a+b", 1275, 625), ("a+b", 1891, 882), ("a+b", 2556, 1183),
-         ("a+b", 5151, 2067), ("a+3b", 961, 534), ("a+3b", 1681, 829), ("a+3b", 2500, 995)]
+BOUND = [("a+b", 276, 211), ("a+b", 496, 329), ("a+b", 1275, 623), ("a+b", 1891, 880), ("a+b", 2556, 1180),
+         ("a+b", 5151, 2063), ("a+3b", 961, 533), ("a+3b", 1681, 827), ("a+3b", 2500, 993)]  # 로그 보간 (10월 25일, 표 3)
 
 
 def fig03(out):
     fig, ax = plt.subplots(figsize=(W2, 3.0))
     Cs = np.array([b[1] for b in BOUND]); Ns = np.array([b[2] for b in BOUND])
     xs = np.logspace(np.log10(220), np.log10(6500), 50)
-    ax.plot(xs, 2.81 * xs ** 0.764, color=K, lw=1, label=r"$N_0 = 2.81 \times C^{0.764}$")
+    ax.plot(xs, 2.82 * xs ** 0.763, color=K, lw=1, label=r"$N_0 = 2.82 \times C^{0.763}$")
     for i, op in enumerate(("a+b", "a+3b")):
         sel = [b for b in BOUND if b[0] == op]
         ax.plot([b[1] for b in sel], [b[2] for b in sel], ls="none", **{k: v for k, v in sty(i).items() if k != "linestyle"}, label=op)
@@ -322,7 +322,7 @@ WD_N = np.array([31, 50, 71]); CW = WD_N * (WD_N + 1) / 2
 def fig08(out):
     fig, ax = plt.subplots(1, 2, figsize=(W1, 2.9), gridspec_kw=dict(wspace=0.38))
     xs = np.logspace(np.log10(400), np.log10(2900), 50)
-    ax[0].plot(xs, 2.81 * xs ** 0.764, color=G3, lw=2.5, zorder=0)
+    ax[0].plot(xs, 2.82 * xs ** 0.763, color=G3, lw=2.5, zorder=0)
     series = [("기본 모델", C5, [298, 554, 618, 797, 1047]), ("확장 모델", C5, [277, 490, 574, 774, 1003]),
               ("GPT형 디코더", C5, [984, 1406, 1855, 2398, 3384]), ("곱셈 a×b (n 소수)", MUL_N * (MUL_N + 1) / 2, [240, 397, 400, 545, 752, 975])]
     for i, (lab, x, y) in enumerate(series):
@@ -420,10 +420,10 @@ def fig11(out):
     """(가) 오답 유지율 vs wd (E30·E34·E36·E37·E41), (나) 두 수 과제의 평가 정확도 vs wd (E34·E36·E41). 값은 docs/analysis/e41_m2_wd.csv."""
     fig, ax = plt.subplots(1, 2, figsize=(W1, 2.8), gridspec_kw=dict(wspace=0.38))
     # 수열 과제: E40 N 2,048, 6만 step (wd 1·3·5·7·10). 두 수 과제: E34·E36·E41, 20만 step.
-    # wd 15는 규칙도 학습하지 못한 점이라 빈 기호로 따로 둔다(수열 1.3·4.4%, 두 수 4.4%).
+    # wd 15는 규칙도 학습하지 못한 점이라 빈 기호로 따로 둔다(수열 1.3·4.4%, 두 수 4.0%).
     series = [("수열 과제, 흩어진 오답", [1, 3, 5, 7, 10], [100, 100, 8.4, 0, 0], 1.3),
               ("수열 과제, 같은 칸 오답", [1, 3, 5, 7, 10], [100, 100, 100, 15, 4.4], 4.4),
-              ("두 수 과제", [1, 2, 3, 4, 5, 7, 10], [100, 100, 100, 100, 100, 21, 0.5], 4.4)]
+              ("두 수 과제", [1, 2, 3, 4, 5, 7, 10], [100, 100, 100, 100, 100, 21, 0.5], 4.0)]
     for i, (lab, x, y, y15) in enumerate(series):
         ax[0].plot(x, y, label=lab, **sty(i))
         kw = sty(i); kw.update(markerfacecolor="white", linestyle="none")

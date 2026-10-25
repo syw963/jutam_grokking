@@ -103,8 +103,10 @@ def noise_part(patterns, low=0.1):
             r["mem_end"] = float(mem[-1]) if len(mem) else math.nan
             ipk = int(np.argmax(mem)) if len(mem) else 0
             r["mem_peak"], r["peak_step"] = (float(mem[ipk]), int(st[ipk])) if len(mem) else (math.nan, None)
-            after = np.nonzero(mem[ipk:] < low)[0]
-            r["t_correct"] = int(st[ipk + after[0]]) if len(after) and r["mem_peak"] >= low else None
+            # 교정 = 최대 이후 low 아래로 내려가 학습 끝까지 유지된 경우만 (10월 25일: 한 번 내려갔다 다시 오른 경우 제외)
+            above = np.nonzero(mem[ipk:] >= low)[0]
+            last = ipk + int(above[-1]) if len(above) else ipk
+            r["t_correct"] = int(st[last + 1]) if r["mem_peak"] >= low and last + 1 < len(mem) else None
             if "test_spread" in rows[0]:
                 sp = [float(x["test_spread"]) for x in rows if x.get("test_spread") not in (None, "")]
                 r["spread_end"] = sp[-1] if sp else math.nan
