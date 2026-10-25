@@ -1,4 +1,4 @@
-"""보고서용 그림 1~11 (흑백, 제목 없음, 한국어 라벨). 번호는 Google Docs 보고서(10월 23일 재배치) 기준.
+"""보고서용 그림 1~11 (흑백, 제목 없음, 한국어 라벨). 번호는 Google Docs 보고서 기준(10월 25일 4.2절과 4.3절 순서를 바꾸며 그림 4~8 번호를 새로 매김: 옛 8 → 4, 옛 4~7 → 5~8).
 
     python make_report_figures.py --res <결과 tgz를 푼 폴더> --out docs/figures/report
 
@@ -205,7 +205,7 @@ def fig03(out):
     save(fig, out, "그림03")
 
 
-# ---------------------------------------------------------------- 그림 4
+# ---------------------------------------------------------------- 그림 5 (10월 25일 전 그림 4)
 def fig04(res, out):
     from src.rules import Rule, analyze, ref_graph
     df = load_runs([Path(res, "E06_boundary_results/runs_boundary")])
@@ -225,10 +225,10 @@ def fig04(res, out):
     log_ticks(ax[0], "y", [100, 1000, 10000])
     ax[0].set_ylabel("지연 중앙값 (step)")
     panel(ax[0], "(가)"); panel(ax[1], "(나)")
-    save(fig, out, "그림04")
+    save(fig, out, "그림05")
 
 
-# ---------------------------------------------------------------- 그림 5
+# ---------------------------------------------------------------- 그림 6 (10월 25일 전 그림 5)
 def fig05(res, out):
     df = pd.concat([load_runs([Path(res, "E06_boundary_results/runs_boundary")]),
                     load_runs([Path(res, "E07_commute_results/runs_commute")])])
@@ -252,10 +252,10 @@ def fig05(res, out):
     log_ticks(ax[0], "y", [100, 1000, 10000])
     ax[0].set_ylabel("지연 중앙값 (step)")
     ax[1].legend(loc="upper right")
-    save(fig, out, "그림05")
+    save(fig, out, "그림06")
 
 
-# ---------------------------------------------------------------- 그림 6
+# ---------------------------------------------------------------- 그림 7 (10월 25일 전 그림 6)
 def fig06(res, out):
     from analyze_obs import PRED_A, PRED_B, from_runs
     def tab(pattern):
@@ -288,10 +288,10 @@ def fig06(res, out):
         a.set_xlabel("칸당 관찰 수")
     ax[1].legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), fontsize=7.5)
     panel(ax[0], "(가)"); panel(ax[1], "(나)")
-    save(fig, out, "그림06")
+    save(fig, out, "그림07")
 
 
-# ---------------------------------------------------------------- 그림 7
+# ---------------------------------------------------------------- 그림 8 (10월 25일 전 그림 7)
 COV = {  # N = 768. (관찰 비율, 지연 중앙값, 일반화 수/10)
     "서로 다른 칸 5개 배선": [(0.944, 6900, 10), (0.923, 5300, 10), (0.882, 3700, 10), (0.862, 3450, 10),
                          (0.842, 2950, 10), (0.822, 2700, 10), (0.802, 2600, 10), (0.782, 2500, 10)],
@@ -309,10 +309,10 @@ def fig07(out):
     ax.set_yscale("log"); log_ticks(ax, "y", [2500, 5000, 10000, 20000])
     ax.set_xlabel("관찰 비율"); ax.set_ylabel("지연 중앙값 (step)")
     ax.legend(loc="upper left")
-    save(fig, out, "그림07")
+    save(fig, out, "그림08")
 
 
-# ---------------------------------------------------------------- 그림 8
+# ---------------------------------------------------------------- 그림 4 (10월 25일 전 그림 8)
 N_ = np.array([31, 41, 50, 61, 71]); C5 = N_ * (N_ + 1) / 2
 MUL_N = np.array([31, 41, 47, 53, 61, 71])
 WD_N = np.array([31, 50, 71]); CW = WD_N * (WD_N + 1) / 2
@@ -351,7 +351,7 @@ def fig08(out):
     ax[0].legend(loc="upper left", ncol=2, fontsize=7, columnspacing=0.8, handlelength=2.2)
     ax[1].legend(loc="upper left", fontsize=7, handlelength=2.2)
     ax[0].set_ylabel(r"일반화 경계 $N_0$")
-    save(fig, out, "그림08")
+    save(fig, out, "그림04")
 
 
 # ---------------------------------------------------------------- 그림 9
