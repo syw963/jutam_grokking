@@ -362,9 +362,8 @@ def fig09(res, out, example="w6_p1_m0_c1024_wd1_s1"):
     for k, ls, col, lab in (("train_exact", "--", K, "학습 정확도"), ("acc_seen", "-", K, "관찰 칸 정확도"),
                             ("acc_unseen", "-", G2, "미관찰 칸 정확도")):
         ax[0].plot(r.step, r[k], ls=ls, color=col, label=lab)
-    ax[0].plot(r.step, (r.emb_top5 - 0.2) / 0.8, ls=":", color=K, label="임베딩 푸리에 집중도")
     ax[0].set_xscale("log"); log_ticks(ax[0], "x", [100, 1000, 10000])
-    ax[0].set_xlabel("학습 step"); ax[0].set_ylabel("정확도"); ax[0].legend(loc="center left", fontsize=7.5)
+    ax[0].set_xlabel("학습 step"); ax[0].set_ylabel("정확도"); ax[0].legend(loc="center left", bbox_to_anchor=(0.27, 0.36), fontsize=7.5)
     rows = []
     for run, g in d.groupby("run"):
         s50, u50 = g[g.acc_seen >= 0.5].step.min(), g[g.acc_unseen >= 0.5].step.min()
