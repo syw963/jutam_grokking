@@ -1,4 +1,4 @@
-"""보고서용 그림 1~11 (흑백, 제목 없음, 한국어 라벨). 번호는 Google Docs 보고서 기준(10월 25일 4.2절과 4.3절 순서를 바꾸며 그림 4~8 번호를 새로 매김: 옛 8 → 4, 옛 4~7 → 5~8).
+"""보고서용 그림 1~9 (흑백, 제목 없음, 한국어 라벨). 번호는 Google Docs 보고서 기준(10월 25일 4.2절과 4.3절 순서를 바꾸며 그림 4~8 번호를 새로 매김: 옛 8 → 4, 옛 4~7 → 5~8. 같은 날 분량 조정으로 배선 12종 그림과 연산별 배선 그림을 보고서에서 빼고 그 뒤 번호를 당김: 옛 7~11 → 5~9, 뺀 두 그림은 제외/ 폴더에 저장).
 
     python make_report_figures.py --res <결과 tgz를 푼 폴더> --out docs/figures/report
 
@@ -61,6 +61,7 @@ def panel(ax, s):
 
 
 def save(fig, out, name):
+    out.mkdir(parents=True, exist_ok=True)
     fig.savefig(out / f"{name}.png")
     fig.savefig(out / f"{name}.pdf")
     plt.close(fig)
@@ -225,7 +226,7 @@ def fig04(res, out):
     log_ticks(ax[0], "y", [100, 1000, 10000])
     ax[0].set_ylabel("지연 중앙값 (step)")
     panel(ax[0], "(가)"); panel(ax[1], "(나)")
-    save(fig, out, "그림05")
+    save(fig, out / "제외", "배선12종")
 
 
 # ---------------------------------------------------------------- 그림 6 (10월 25일 전 그림 5)
@@ -252,7 +253,7 @@ def fig05(res, out):
     log_ticks(ax[0], "y", [100, 1000, 10000])
     ax[0].set_ylabel("지연 중앙값 (step)")
     ax[1].legend(loc="upper right")
-    save(fig, out, "그림06")
+    save(fig, out / "제외", "연산별_배선")
 
 
 # ---------------------------------------------------------------- 그림 7 (10월 25일 전 그림 6)
@@ -288,7 +289,7 @@ def fig06(res, out):
         a.set_xlabel("칸당 관찰 수")
     ax[1].legend(loc="upper left", bbox_to_anchor=(1.0, 1.0), fontsize=7.5)
     panel(ax[0], "(가)"); panel(ax[1], "(나)")
-    save(fig, out, "그림07")
+    save(fig, out, "그림05")
 
 
 # ---------------------------------------------------------------- 그림 8 (10월 25일 전 그림 7)
@@ -309,7 +310,7 @@ def fig07(out):
     ax.set_yscale("log"); log_ticks(ax, "y", [2500, 5000, 10000, 20000])
     ax.set_xlabel("관찰 비율"); ax.set_ylabel("지연 중앙값 (step)")
     ax.legend(loc="upper left")
-    save(fig, out, "그림08")
+    save(fig, out, "그림06")
 
 
 # ---------------------------------------------------------------- 그림 4 (10월 25일 전 그림 8)
@@ -380,7 +381,7 @@ def fig09(res, out, example="w6_p1_m0_c1024_wd1_s1"):
     ax[1].set_xlabel("관찰 칸 정확도 50% 도달 step"); ax[1].set_ylabel("미관찰 칸 정확도 50% 도달 step")
     ax[1].legend(loc="upper left", fontsize=7.5)
     panel(ax[0], "(가)"); panel(ax[1], "(나)")
-    save(fig, out, "그림09")
+    save(fig, out, "그림07")
 
 
 # ---------------------------------------------------------------- 그림 10
@@ -411,7 +412,7 @@ def fig10(res, out, wd=1, frac="0.1"):
     h1, l1 = ax[0, 1].get_legend_handles_labels()
     fig.legend(h1, l1, loc="lower center", ncol=3, bbox_to_anchor=(0.5, 0.0))
     fig.subplots_adjust(bottom=0.17)
-    save(fig, out, "그림10")
+    save(fig, out, "그림08")
 
 
 # ---------------------------------------------------------------- 그림 11
@@ -436,7 +437,7 @@ def fig11(out):
     for a, p in zip(ax, ("(가)", "(나)")):
         a.set_xscale("log"); a.set_xticks(wd); a.set_xticklabels([str(w) for w in wd]); a.minorticks_off()
         a.set_xlim(0.85, 18); a.set_ylim(-5, 108); a.set_xlabel("Weight Decay"); panel(a, p)
-    save(fig, out, "그림11")
+    save(fig, out, "그림09")
 
 
 def main():
