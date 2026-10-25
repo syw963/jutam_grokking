@@ -432,7 +432,8 @@ def fig11(out):
     ax[0].set_ylabel("오답 유지율 (%)"); ax[0].legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=7)
     wd = [1, 2, 3, 4, 5, 7, 10, 15]
     ax[1].plot(wd, [100, 100, 100, 100, 100, 100, 100, 84], label="오답 없음", **sty(1))
-    ax[1].plot(wd, [97.6, 97.4, 81.8, 36.8, 60.8, 97.4, 97.3, 28.0], label="오답 예제 10%", **sty(2))
+    # 원자료 metrics.csv 끝 평가 정확도 평균 (10월 25일 재계산)
+    ax[1].plot(wd, [97.4, 97.4, 81.6, 36.8, 61.0, 97.4, 97.2, 28.0], label="오답 예제 10%", **sty(2))
     ax[1].set_ylabel("평가 정확도 (%)"); ax[1].legend(loc="upper center", bbox_to_anchor=(0.5, -0.22), fontsize=7)
     for a, p in zip(ax, ("(가)", "(나)")):
         a.set_xscale("log"); a.set_xticks(wd); a.set_xticklabels([str(w) for w in wd]); a.minorticks_off()

@@ -101,12 +101,16 @@ def noise_part(patterns, low=0.1):
             te = np.array([float(x["test_clean_rows_exact"]) for x in rows])
             r["learned"] = bool(len(te)) and te[-1] >= 0.95
             r["mem_end"] = float(mem[-1]) if len(mem) else math.nan
+            fx = np.array([float(x["fixed"]) for x in rows])
+            r["fixed_end"] = float(fx[-1]) if len(fx) else math.nan
             ipk = int(np.argmax(mem)) if len(mem) else 0
             r["mem_peak"], r["peak_step"] = (float(mem[ipk]), int(st[ipk])) if len(mem) else (math.nan, None)
             # 교정 = 최대 이후 low 아래로 내려가 학습 끝까지 유지된 경우만 (10월 25일: 한 번 내려갔다 다시 오른 경우 제외)
             above = np.nonzero(mem[ipk:] >= low)[0]
             last = ipk + int(above[-1]) if len(above) else ipk
-            r["t_correct"] = int(st[last + 1]) if r["mem_peak"] >= low and last + 1 < len(mem) else None
+            # 원래 정답으로 돌아온 경우만 교정 (학습이 무너져 오답도 정답도 내지 않는 경우 제외)
+            ok = r["mem_peak"] >= low and last + 1 < len(mem) and r["fixed_end"] >= 0.5
+            r["t_correct"] = int(st[last + 1]) if ok else None
             if "test_spread" in rows[0]:
                 sp = [float(x["test_spread"]) for x in rows if x.get("test_spread") not in (None, "")]
                 r["spread_end"] = sp[-1] if sp else math.nan
@@ -116,7 +120,12 @@ def noise_part(patterns, low=0.1):
         o = dict(N=N, wd=wd, mode=mode, runs=len(rs), learned=f"{sum(r['learned'] for r in rs)}/{len(rs)}")
         if mode != "none":
             L = [r for r in rs if r["learned"]] or rs
+            # 평균은 일반화한 run 기준(보고서 값). 일반화 여부와 무관한 전체 평균, 시행별 최대도 함께 기록
+            o["mean_over"] = f"learned {len(L)}" if any(r["learned"] for r in rs) else f"all {len(rs)} (none learned)"
             o["mem_end"] = round(float(np.mean([r["mem_end"] for r in L])), 3)
+            o["mem_end_all"] = round(float(np.mean([r["mem_end"] for r in rs])), 3)
+            o["mem_end_max"] = round(float(np.max([r["mem_end"] for r in L])), 3)
+            o["fixed_end"] = round(float(np.mean([r["fixed_end"] for r in L])), 3)
             o["mem_peak"] = round(float(np.mean([r["mem_peak"] for r in L])), 3)
             tc = [r["t_correct"] for r in L if r["t_correct"] is not None]
             o["corrected"] = f"{len(tc)}/{len(L)}"
